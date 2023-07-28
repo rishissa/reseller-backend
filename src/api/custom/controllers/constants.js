@@ -1,0 +1,16 @@
+module.exports = {
+  new: "NEW",
+  accepted: "ACCEPTED",
+  declined: "DECLINED",
+  processing: "PROCESSING",
+  intransit: "INTRANSIT",
+  out_for_delivery: "OUT_FOR_DELIVERY",
+  delivered: "DELIVERED",
+  completed: "COMPLETED",
+  rto: "RTO",
+  return_request: "RETURN_REQUEST",
+  return_accepted: "RETURN_ACCEPTED",
+  return_declined: "RETURN_DECLINED",
+  return_received: "RETURN_RECEIVED",
+  return_pending: "RETURN_PENDING",
+};

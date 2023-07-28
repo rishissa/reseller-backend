@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "collection_statics",
+  "info": {
+    "singularName": "collection-static",
+    "pluralName": "collection-statics",
+    "displayName": "Collection Static",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "tag": {
+      "type": "string"
+    },
+    "products": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::product.product"
+    }
+  }
+}

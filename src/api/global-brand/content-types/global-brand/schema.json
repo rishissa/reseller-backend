@@ -1,0 +1,45 @@
+{
+  "kind": "singleType",
+  "collectionName": "global_brands",
+  "info": {
+    "singularName": "global-brand",
+    "pluralName": "global-brands",
+    "displayName": "Global Brand",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "tagline": {
+      "type": "string"
+    },
+    "whatsapp_number": {
+      "type": "string"
+    },
+    "calling_number": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "about_us": {
+      "type": "richtext"
+    }
+  }
+}

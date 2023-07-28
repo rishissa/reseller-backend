@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "order_products",
+  "info": {
+    "singularName": "order-product",
+    "pluralName": "order-products",
+    "displayName": "OrderProduct",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "quantity": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "sellingPrice": {
+      "type": "decimal"
+    },
+    "order_price": {
+      "type": "decimal",
+      "required": true
+    },
+    "product_variant": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product-variant.product-variant"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "NEW",
+        "ACCEPTED",
+        "DECLINED",
+        "PROCESSING",
+        "INTRANSIT",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED",
+        "COMPLETED",
+        "PAYOUT_DONE",
+        "RTO",
+        "RETURN_REQUEST",
+        "RETURN_ACCEPTED",
+        "RETURN_DECLINED",
+        "RETURN_RECEIVED",
+        "RETURN_PENDING"
+      ]
+    },
+    "is_cod_paid": {
+      "type": "boolean"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "order_products"
+    },
+    "custom_courier": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::custom-courier.custom-courier",
+      "mappedBy": "order_product"
+    }
+  }
+}

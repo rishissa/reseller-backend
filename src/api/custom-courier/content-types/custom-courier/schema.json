@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "custom_couriers",
+  "info": {
+    "singularName": "custom-courier",
+    "pluralName": "custom-couriers",
+    "displayName": "Custom Courier",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "trackingId": {
+      "type": "string"
+    },
+    "courierName": {
+      "type": "string",
+      "required": true
+    },
+    "courierEmail": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string",
+      "required": true
+    },
+    "order_product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::order-product.order-product",
+      "inversedBy": "custom_courier"
+    }
+  }
+}

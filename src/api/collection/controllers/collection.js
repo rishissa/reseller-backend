@@ -1,0 +1,213 @@
+"use strict";
+
+/**
+ * collection controller
+ */
+
+const { createCoreController } = require("@strapi/strapi").factories;
+
+module.exports = createCoreController(
+  "api::collection.collection",
+  ({ strapi }) => ({
+    searchProdInCollections: async (ctx, next) => {
+      try {
+        const id = ctx.request.params.id;
+        const key = ctx.request.query.product;
+        var meta;
+        const collectionProds = await strapi.entityService.findOne(
+          "api::collection.collection",
+          id,
+          {
+            populate: {
+              products: {
+                filters: {
+                  $or: [
+                    {
+                      name: {
+                        $containsi: key,
+                      },
+                    },
+                    {
+                      desc: {
+                        $containsi: key,
+                      },
+                    },
+                  ],
+                },
+                populate: {
+                  thumbnail: true,
+                  product_variant: true,
+                },
+              },
+            },
+          }
+        );
+        meta = {
+          total: collectionProds.products.length,
+        };
+        // const products = await strapi
+        return { collectionProds, meta };
+      } catch (err) {
+        return err;
+      }
+    },
+
+    find: async (ctx, next) => {
+      try {
+        const pagination = ctx.request.query;
+        var collections;
+        var allCollections;
+        var meta;
+
+        const getCollection = async (offset, limit) => {
+          const collections = await strapi.db
+            .query("api::collection.collection")
+            .findMany({
+              offset: offset,
+              limit: limit,
+              orderBy: { id: "asc" },
+              populate: {
+                products: {
+                  populate: {
+                    thumbnail: true,
+                    product_variants: true,
+                  },
+                },
+              },
+            });
+          return collections;
+        };
+
+        if (Object.keys(pagination).length > 0) {
+          const { limit, offset } = getPagination(
+            pagination.pagination.page,
+            pagination.pagination.size
+          );
+
+          allCollections = await getCollection(offset, limit);
+          meta = {
+            pagination: {
+              page: pagination.pagination.page
+                ? parseInt(pagination.pagination.page)
+                : 1,
+              pageSize: limit,
+              pageCount: Math.ceil(allCollections.length / limit),
+              total: allCollections.length,
+            },
+          };
+        } else {
+          allCollections = await getCollection(null, null);
+          meta = {
+            pagination: {
+              page: 1,
+              pageSize: allCollections.length,
+              pageCount: 1,
+              total: allCollections.length,
+            },
+          };
+        }
+        return ctx.send({ data: allCollections, meta }, 200);
+      } catch (err) {
+        return ctx.send(err, 400);
+      }
+    },
+
+    getCollection: async (ctx, next) => {
+      var id = ctx.request.params.id;
+      var allProducts;
+
+      try {
+        await strapi.entityService
+          .findOne("api::collection.collection", parseInt(id), {
+            populate: {
+              products: {
+                populate: {
+                  thumbnail: true,
+                  product_variants: true,
+                },
+              },
+            },
+          })
+          .then((result) => {
+            allProducts = result;
+          })
+          .catch((err) => {
+            return err;
+          });
+
+        return allProducts;
+      } catch (err) {
+        return err;
+      }
+    },
+
+    getCollectionByTag: async (ctx, next) => {
+      let tag = ctx.request.body.tag;
+      try {
+        let listOfTagProducts = await strapi.db
+          .query("api::collection.collection")
+          .findOne({
+            where: {
+              tag: tag,
+            },
+            populate: {
+              products: {
+                populate: {
+                  thumbnail: true,
+                  product_variants: true,
+                },
+              },
+            },
+          });
+        return listOfTagProducts;
+      } catch (err) {
+        console.log(err);
+        return err;
+      }
+    },
+
+    searchInCollections: async (ctx, next) => {
+      try {
+        const key = ctx.request.query.qs;
+        const getCollectionData = async (offset, limit) => {
+          const list = await strapi.db
+            .query("api::collection.collection")
+            .findMany({
+              where: {
+                $or: [
+                  {
+                    name: {
+                      $containsi: key,
+                    },
+                  },
+                  {
+                    tag: {
+                      $containsi: key,
+                    },
+                  },
+                  {
+                    products: {
+                      $or: [
+                        {
+                          name: {
+                            $containsi: key,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            });
+          return list;
+        };
+
+        let products = await getCollectionData(null, null);
+        return ctx.send({ data: products }, 200);
+      } catch (err) {
+        console.log(err);
+        return ctx.send(err, 400);
+      }
+    },
+  })
+);

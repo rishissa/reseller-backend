@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkssa_reseller=self.webpackChunkssa_reseller||[]).push([[92],{28465:(a,s,e)=>{e.r(s),e.d(s,{default:()=>r});var t=e(53547),E=e(72178),_=e(7694),n=e(99369),l=e(57692);const r=()=>{const P=(0,_.v9)(n._);return t.createElement(E.O4,{permissions:P.settings["api-tokens"].read},t.createElement(l.Z,null))}}}]);

@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pin_codes",
+  "info": {
+    "singularName": "pin-code",
+    "pluralName": "pin-codes",
+    "displayName": "PinCode",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "pincode": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "district": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "postalDivision": {
+      "type": "string"
+    },
+    "postalRegion": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    }
+  }
+}

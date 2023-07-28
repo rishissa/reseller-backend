@@ -1,0 +1,35 @@
+{
+  "kind": "singleType",
+  "collectionName": "globals",
+  "info": {
+    "singularName": "global",
+    "pluralName": "globals",
+    "displayName": "Global",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "subscriptionPrice": {
+      "type": "decimal"
+    },
+    "codPrepaidAmount": {
+      "type": "decimal"
+    },
+    "shippingPrice": {
+      "type": "decimal"
+    },
+    "razorpayKey": {
+      "type": "string"
+    },
+    "razorpaySecret": {
+      "type": "string"
+    },
+    "withdrawLimit": {
+      "type": "decimal",
+      "required": true
+    }
+  }
+}
