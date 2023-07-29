@@ -69,6 +69,14 @@ const myExtraRoutes = [
       middlewares: [], //query validation
     },
   },
+  {
+    method: "POST",
+    path: "/collections",
+    handler: "collection.create",
+    config: {
+      prefix: "",
+    },
+  },
 ];
 
 module.exports = customRouter(defaultRouter, myExtraRoutes);

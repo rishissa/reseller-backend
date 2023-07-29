@@ -7,7 +7,10 @@ const { extendDate, formatDate } = require("../../utils/DateHelper");
  */
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
-const { txn_purpose } = require("../../../../config/constants");
+const {
+  txn_purpose,
+  activity_status,
+} = require("../../../../config/constants");
 const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
 const { createCoreController } = require("@strapi/strapi").factories;
@@ -119,6 +122,15 @@ module.exports = createCoreController(
                 .query("api::subscription.subscription")
                 .create({ data: data });
             }
+            //create activity
+            let activity_data = {
+              event: activity_status.new_subscription,
+              user: user.id,
+              description: `New Subscription Added for the User: ${user.name} ID: ${user.id}`,
+            };
+
+            const activity = createActivity(activity_data, strapi);
+
             return ctx.send(razorpayInfo, 200);
           }
         }

@@ -6,7 +6,11 @@
 
 const { createCoreController } = require("@strapi/strapi").factories;
 const JWT = require("jsonwebtoken");
-const { order_status } = require("../../../../config/constants");
+const {
+  order_status,
+  activity_status,
+} = require("../../../../config/constants");
+const { createActivity } = require("../../utils/Helpers");
 
 module.exports = createCoreController(
   "api::custom-courier.custom-courier",
@@ -97,6 +101,14 @@ module.exports = createCoreController(
             where: { id: order_id },
             data: { status: order_status.intransit },
           });
+          let activity_data = {
+            event: activity_status.order_shipped,
+            user: id,
+            description: `Order #${order.slug} has been Shipped`,
+          };
+
+          const activity = createActivity(activity_data, strapi);
+
           ctx.send({ message: "Order has been shipped" }, 201);
         } else {
           ctx.send(

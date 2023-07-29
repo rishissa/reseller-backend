@@ -14,11 +14,11 @@
   "attributes": {
     "name": {
       "type": "string",
-      "required": true
+      "required": false
     },
     "phone": {
       "type": "string",
-      "required": true
+      "required": false
     },
     "country_code": {
       "type": "string"
@@ -43,9 +43,9 @@
     },
     "user": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "oneToMany",
       "target": "plugin::users-permissions.user",
-      "inversedBy": "leads"
+      "mappedBy": "lead"
     },
     "product": {
       "type": "relation",

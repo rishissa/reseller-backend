@@ -4,6 +4,8 @@
 
 const { createCoreController } = require("@strapi/strapi").factories;
 
+const { activity_status } = require("../../../../config/constants");
+const { createActivity } = require("../../utils/Helpers");
 const { tz_reasons, tz_types } = require("../../utils/WalletConstants");
 
 module.exports = createCoreController("api::wallet.wallet", ({ strapi }) => ({
@@ -60,6 +62,15 @@ module.exports = createCoreController("api::wallet.wallet", ({ strapi }) => ({
               id: users_permissions_user,
             },
           });
+
+        //create activity
+        let activity_data = {
+          event: activity_status.wallet_debit,
+          user: userInfo.id,
+          description: `Wallet Amount ${amount} added for the User: ${userInfo.name} ID:${userInfo.id}`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
       } else {
         const updateUser = await strapi
           .query("plugin::users-permissions.user")
@@ -72,6 +83,14 @@ module.exports = createCoreController("api::wallet.wallet", ({ strapi }) => ({
               id: users_permissions_user,
             },
           });
+        //create activity
+        let activity_data = {
+          event: activity_status.wallet_credit,
+          user: userInfo.id,
+          description: `Wallet Amount ${amount} credited from the User: ${userInfo.name} ID:${userInfo.id}`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
       }
 
       return ctx.send(add, 200);

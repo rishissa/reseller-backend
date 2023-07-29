@@ -176,11 +176,17 @@
     "shares": {
       "type": "integer"
     },
-    "leads": {
+    "activity_logs": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::lead.lead",
+      "target": "api::activity-log.activity-log",
       "mappedBy": "user"
+    },
+    "lead": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::lead.lead",
+      "inversedBy": "user"
     }
   }
 }

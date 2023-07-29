@@ -1,5 +1,8 @@
 "use strict";
 
+const { activity_status } = require("../../../../config/constants");
+const { createActivity } = require("../../utils/Helpers");
+
 /**
  * collection controller
  */
@@ -108,6 +111,27 @@ module.exports = createCoreController(
         }
         return ctx.send({ data: allCollections, meta }, 200);
       } catch (err) {
+        return ctx.send(err, 400);
+      }
+    },
+
+    async create(ctx, next) {
+      try {
+        const response = await super.create(ctx);
+        const { id, isAdmin = false } = await strapi.plugins[
+          "users-permissions"
+        ].services.jwt.getToken(ctx);
+        //create activity
+        let activity_data = {
+          event: activity_status.new_collection,
+          user: id,
+          description: `New Collection ${response.data.attributes.name} Added`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
+        return ctx.send(response.data, 200);
+      } catch (err) {
+        console.log(err);
         return ctx.send(err, 400);
       }
     },

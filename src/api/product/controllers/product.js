@@ -1,6 +1,6 @@
 "use strict";
 
-const { baseURL } = require("../../../../config/constants");
+const { baseURL, activity_status } = require("../../../../config/constants");
 const axios = require("axios");
 /**
  * product controller
@@ -9,10 +9,14 @@ const axios = require("axios");
 const { createCoreController } = require("@strapi/strapi").factories;
 
 const { getPagination } = require("../../utils/Pagination");
+const { createActivity } = require("../../utils/Helpers");
 
 module.exports = createCoreController("api::product.product", ({ strapi }) => ({
   async create(ctx, next) {
     try {
+      const { id, isAdmin = false } = await strapi.plugins[
+        "users-permissions"
+      ].services.jwt.getToken(ctx);
       console.log("Into Changing Defaults Products API");
       const variants = ctx.request.body.data.variants;
       const response = await super.create(ctx);
@@ -64,6 +68,16 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         newVariants.push(newVariant);
       }
       response.data["variants"] = newVariants;
+
+      //create activity
+      let activity_data = {
+        event: activity_status.new_product,
+        user: id,
+        description: `New Product ${response.data.name} has been Added`,
+      };
+
+      const activity = createActivity(activity_data, strapi);
+
       return ctx.send(response, 200);
     } catch (err) {
       console.log(err);
@@ -121,7 +135,12 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
             orderBy: { id: "asc" },
             offset: offset,
             limit: limit,
-            populate: { thumbnail: true, gallery: true, category: true },
+            populate: {
+              thumbnail: true,
+              gallery: true,
+              category: true,
+              product_variants: true,
+            },
           });
         return products;
       };

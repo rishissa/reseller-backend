@@ -10,7 +10,11 @@ const fs = require("fs");
 const bcrypt = require("bcryptjs");
 const mailTemplate = require("./mailTemplate");
 const JWT = require("jsonwebtoken");
-const { PaymentStatus, baseURL } = require("../../../../config/constants");
+const {
+  PaymentStatus,
+  baseURL,
+  activity_status,
+} = require("../../../../config/constants");
 const {
   payment_method,
   order_status,
@@ -33,6 +37,7 @@ const { domain } = require("../../../../config/constants");
 const { faker } = require("@faker-js/faker");
 const serviceAccount = require("../../../../config/resell-demo-otpauth-firebase-adminsdk-vys9k-5e6f672759.json");
 const admin = require("firebase-admin");
+const { createActivity } = require("../../utils/Helpers");
 
 var browser = null;
 /*
@@ -645,6 +650,15 @@ module.exports = {
                     phone: phoneNumber,
                   },
                 });
+
+              //create activity
+              let activity_data = {
+                event: activity_status.admin_login,
+                user: updateUser.id,
+                description: `Admin: ID:${user.id} Logged In`,
+              };
+
+              const activity = createActivity(activity_data, strapi);
             } else {
               const updateUser = await strapi
                 .query("plugin::users-permissions.user")
@@ -656,6 +670,13 @@ module.exports = {
                     id: user.id,
                   },
                 });
+              let activity_data = {
+                event: activity_status.user_login,
+                user: updateUser.id,
+                description: `User: ID:${user.id} Logged In`,
+              };
+
+              const activity = createActivity(activity_data, strapi);
             }
             console.log(
               "Phone number verified successfully And the user is confirmed"
@@ -1041,6 +1062,15 @@ module.exports = {
               amount: parseInt(body.amount),
             },
           });
+
+        let activity_data = {
+          event: activity_status.reseller_withdraw,
+          user: user.id,
+          description: `Reseller: ${user.name} ID:${user.id} Withdrew amount of ₹${body.amount}`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
+
         return ctx.send({ message: "Payout Done" }, 200);
       }
       return ctx.send({ message: "Payout Not Done" }, payoutSeller.status);

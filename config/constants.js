@@ -1,4 +1,4 @@
-const domain = "https://api.hangs.in";
+const domain = "http://localhost:1337";
 const baseURL = domain + "/api";
 
 const PaymentStatus = {
@@ -51,6 +51,28 @@ const txn_purpose = {
   added_to_wallet: "ADDED_TO_WALLET",
 };
 
+const ActivityStatus = {
+  admin_login: "ADMIN_LOG_IN",
+  user_login: "RESELLER_LOG_IN",
+  order_placed: "ORDER_PLACED",
+  order_accepted: "ORDER_ACCEPTED",
+  order_declined: "ORDER_DECLINED",
+  order_shipped: "ORDER_SHIPPED",
+  order_delivered: "ORDER_DELIVERED",
+  new_subscription: "SUBSCRIPTION_ADDED",
+  new_campaign: "NEW_CAMPAIGN_ADDED",
+  new_product: "NEW_PRODUCT_ADDED",
+  new_collection: "NEW_COLLECTION_ADDED",
+  new_tutorial: "NEW_TUTORIAL_ADDED",
+  new_lead: "NEW_LEAD_ADDED",
+  new_group: "NEW_GROUP_ADDED",
+  lead_completed: "LEAD_COMPLETED",
+  reseller_withdraw: "RESELLER_WITHDRAW",
+  reseller_payout: "RESELLER_PAYOUT",
+  wallet_debit: "WALLET_DEBIT",
+  wallet_credit: "WALLET_CREDIT",
+};
+
 module.exports = {
   PaymentStatus: PaymentStatus,
   order_status: OrderStatuses,
@@ -60,4 +82,5 @@ module.exports = {
   getHeaders,
   domain,
   txn_purpose,
+  activity_status: ActivityStatus,
 };

@@ -7,12 +7,17 @@
 const { createCoreController } = require("@strapi/strapi").factories;
 const { bulkPriceVariants } = require("../../utils/BulkPricing");
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
-const { commission } = require("../../utils/Helpers");
+const {
+  commission,
+  createActivity,
+  generateOrderUid,
+} = require("../../utils/Helpers");
 
 const {
   payment_methods,
   order_status,
   txn_purpose,
+  activity_status,
 } = require("../../../../config/constants");
 const Razorpay = require("razorpay");
 const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
@@ -221,6 +226,35 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         }
       }
 
+      if (payment_mode === "COD") {
+        if (plan === null) {
+          totalAmount =
+            parseFloat(globalVar.codPrepaidAmount) +
+            parseFloat(globalVar.shippingPrice);
+          totalAmount = commission(totalAmount);
+        }
+
+        if (plan) {
+          if (plan.codAllowed === true) {
+            if (plan.codPrice === null || plan.codPrice === 0) {
+              totalAmount =
+                parseFloat(globalVar.codPrepaidAmount) +
+                parseFloat(globalVar.shippingPrice);
+              totalAmount = commission(totalAmount);
+            } else {
+              totalAmount =
+                parseFloat(plan.codPrice) + parseFloat(globalVar.shippingPrice);
+              totalAmount = commission(totalAmount);
+            }
+          } else {
+            return ctx.send(
+              { message: `COD is not allowed in ${plan.name} plan` },
+              400
+            );
+          }
+        }
+      }
+
       if (payment_mode === "PREPAID") {
         if (plan === null) {
           totalAmount += parseFloat(globalVar.shippingPrice);
@@ -263,7 +297,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
         order = await strapi.entityService.create("api::order.order", {
           data: {
-            slug: longTime,
+            slug: generateOrderUid(),
             order_products: [...orderProducts],
             address: consumer.addressID,
             status: order_status.new,
@@ -313,6 +347,15 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             },
             where: { id: userInfo.id },
           });
+
+        //create activity
+        let activity_data = {
+          event: activity_status.order_placed,
+          user: userInfo.id,
+          description: `Order #${order.slug} Placed for the User: ${userInfo.name} ID: ${userInfo.id} -- Amount: ${totalAmount} -- Mode: Wallet`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
         console.log(products);
         const fcmData = {
           title: "Order Placed",
@@ -394,21 +437,25 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         //Create Order
         longTime = "order_" + new Date().getTime();
 
-        await strapi.entityService.create("api::order.order", {
-          data: {
-            slug: longTime,
-            order_products: [...orderProducts],
-            address: consumer.addressID,
-            status: order_status.new,
-            consumerName: consumer.conName,
-            consumerPhone: consumer.conPhone,
-            consumerEmail: consumer.conEmail,
-            isResellerOrder: consumer.isResellerOrder,
-            payment_mode: consumer.payment_mode,
-            users_permissions_user: user_id,
-            rzpayOrderId: razorpayInfo.id,
-          },
-        });
+        const order_data = await strapi.entityService.create(
+          "api::order.order",
+          {
+            data: {
+              slug: longTime,
+              order_products: [...orderProducts],
+              address: consumer.addressID,
+              status: order_status.new,
+              consumerName: consumer.conName,
+              consumerPhone: consumer.conPhone,
+              consumerEmail: consumer.conEmail,
+              isResellerOrder: consumer.isResellerOrder,
+              payment_mode: consumer.payment_mode,
+              users_permissions_user: user_id,
+              rzpayOrderId: razorpayInfo.id,
+            },
+          }
+        );
+
         // razorpayInfo = Object.assign({ order_slug: order.slug }, razorpayInfo);
         return razorpayInfo;
       }
@@ -557,6 +604,19 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               ordersCount: ordersCount,
             },
           });
+        //create activity
+        let activity_data = {
+          event: activity_status.order_placed,
+          user: userInfo.id,
+          description: `Order #${order.slug} Placed for the User: ${
+            userInfo.name
+          } ID: ${userInfo.id} -- Amount: ${rzOrder.amount / 100} -- Mode: ${
+            order.payment_mode
+          }`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
+
         const fcmData = {
           title: "Order Placed",
           body: `Your Order has been placed successfully`,
@@ -617,6 +677,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             },
             order: {
               address: true,
+              users_permissions_user: true,
             },
           },
         });
@@ -634,39 +695,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
       const formattedDateString = `${day} ${month}, ${year}`;
 
-      // let data = {
-      //   orderid: orderDetails.slug,
-      //   message: `Your Order Accepted Successfully on ${formattedDateString}`,
-      //   order_status: "Order Accepted",
-      //   consumerName: orderDetails.consumerName,
-      //   date: formattedDateString,
-      //   order_products: {
-      //     products,
-      //   },
-      //   priceBreakdown: {
-      //     subtotal: totalAmount,
-      //     gst: "00.0",
-      //     total: totalAmount,
-      //   },
-      //   address: {
-      //     name: orderDetails.consumerName,
-      //     addressLine: orderDetails.address.addressLine1,
-      //     street: orderDetails.address.addressLine2,
-      //     state: orderDetails.address.state,
-      //     city: orderDetails.address.city,
-      //     country: orderDetails.address.country,
-      //     pincode: orderDetails.address.pincode,
-      //     phone: orderDetails.consumerPhone,
-      //     payment_mode:
-      //       orderDetails.payment_mode === "PREPAID"
-      //         ? "Prepaid"
-      //         : "Cash On Delivery",
-      //   },
-      //   status: "Placed",
-      //   email: orderDetails.consumerEmail,
-      //   subject: "Order Accepted ✨",
-      // };
-
       const order = await strapi.db
         .query("api::order-product.order-product")
         .update({
@@ -682,6 +710,15 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           { message: "Order not found with the given order_id" }
         );
       } else {
+        //create activity
+        let activity_data = {
+          event: activity_status.order_accepted,
+          user: orderDetails.order.users_permissions_user.id,
+          description: `Order #${orderDetails.order.slug} Accepted By the Seller`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
+
         // let acceptMail = await mailTemplate.mailServer(data);
         ctx.send({ message: "Order Accepted Successfully" });
       }
@@ -794,6 +831,13 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               amount: totalAmount,
             },
           });
+        let activity_data = {
+          event: activity_status.order_declined,
+          user: id,
+          description: `Order #${order.order.slug} Rejected By the Seller`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
 
         return ctx.send({ message: "Order Declined!!" }, 201);
       } else {
@@ -1046,6 +1090,15 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             status: order_status.payout_done,
           },
         });
+
+      let activity_data = {
+        event: activity_status.order_placed,
+        user: userInfo.id,
+        description: `Payout of amount ₹${payoutAmt} done for Reseller: ${order_prod.order.users_permissions_user.name}`,
+      };
+
+      const activity = createActivity(activity_data, strapi);
+
       return ctx.send(payout, 200);
     } catch (err) {
       console.log(err);
@@ -1310,6 +1363,15 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               profit: profit,
             },
           });
+
+        //create activity
+        let activity_data = {
+          event: activity_status.order_delivered,
+          user: orderProduct.order.users_permissions_user.id,
+          description: `Order #${order.slug} has been delivered`,
+        };
+
+        const activity = createActivity(activity_data, strapi);
 
         return ctx.send(
           { message: `Order ${order_id} has been updated successfully` },
