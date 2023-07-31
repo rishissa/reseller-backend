@@ -15,7 +15,7 @@ module.exports = createCoreController(
     async create(ctx, next) {
       try {
         const { id, isAdmin = false } = await strapi.plugins[
-          "users-permissions"
+          "users-permissions" 
         ].services.jwt.getToken(ctx);
         const response = await super.create(ctx);
         let activity_data = {

@@ -36,5 +36,14 @@ module.exports = {
         middlewares: [], //query && params validator
       },
     },
+    {
+      method: "GET",
+      path: "/category/search",
+      handler: "category.searchCategory",
+      config: {
+        policies: [],
+        middlewares: [], //query && params validator
+      },
+    },
   ],
 };

@@ -1,20 +1,22 @@
 "use strict";
 
+const { getPagination } = require("../../utils/Pagination");
+
 /**
  * category controller
  */
-const getPagination = (page, pageSize) => {
-  if (!page && !pageSize) {
-    return { limit: null, offset: null };
-  } else {
-    // const limit = pageSize ? +pageSize : 3;
-    // const offset = page ? (page-1)*limit : 1;
-    const limit = +pageSize;
-    const offset = (page - 1) * limit;
+// const getPagination = (page, pageSize) => {
+//   if (!page && !pageSize) {
+//     return { limit: null, offset: null };
+//   } else {
+//     // const limit = pageSize ? +pageSize : 3;
+//     // const offset = page ? (page-1)*limit : 1;
+//     const limit = +pageSize;
+//     const offset = (page - 1) * limit;
 
-    return { limit, offset };
-  }
-};
+//     return { limit, offset };
+//   }
+// };
 
 const { createCoreController } = require("@strapi/strapi").factories;
 
@@ -26,6 +28,7 @@ module.exports = createCoreController(
       try {
         console.log("Hello from categories");
         const pagination = ctx.request.query;
+        console.log(pagination.pagination.page);
         var categories;
         var allCategories;
         var meta;
@@ -34,10 +37,9 @@ module.exports = createCoreController(
           .query("api::category.category")
           .findMany({
             orderBy: { id: "asc" },
-            fields: ["name", "slug", "id"],
             populate: {
               thumbnail: true,
-              product_variants: true,
+              sub_categories: { populate: { thumbnail: true } },
             },
           });
         if (Object.keys(pagination).length > 0) {
@@ -47,9 +49,10 @@ module.exports = createCoreController(
           );
           meta = {
             pagination: {
-              page: pagination.pagination.page
-                ? parseInt(pagination.pagination.page)
-                : 1,
+              page:
+                parseInt(pagination.pagination.page) < 1
+                  ? 1
+                  : parseInt(pagination.pagination.page),
               pageSize: limit,
               pageCount: Math.ceil(allCategories.length / limit),
               total: allCategories.length,
@@ -61,10 +64,9 @@ module.exports = createCoreController(
               orderBy: { id: "asc" },
               offset: offset,
               limit: limit,
-              fields: ["name", "slug", "id"],
               populate: {
                 thumbnail: true,
-                product_variants: true,
+                sub_categories: { populate: { thumbnail: true } },
               },
             });
         } else {
@@ -79,9 +81,10 @@ module.exports = createCoreController(
           categories = allCategories;
         }
 
-        return { categories, meta };
+        return { data: categories, meta };
       } catch (err) {
-        return err;
+        console.log(err);
+        return ctx.send(err, 400);
       }
     },
 
@@ -162,6 +165,88 @@ module.exports = createCoreController(
       }
     },
 
+    searchCategory: async (ctx, next) => {
+      try {
+        var key = ctx.request.query.key;
+        console.log(key);
+        const getCategories = async (offset, limit) => {
+          const categoriesList = await strapi.db
+            .query("api::category.category")
+            .findWithCount({
+              where: {
+                $or: [
+                  {
+                    name: {
+                      $containsi: key,
+                    },
+                  },
+                  {
+                    sub_categories: {
+                      name: {
+                        $containsi: key,
+                      },
+                    },
+                  },
+                ],
+              },
+              limit,
+              offset,
+              populate: {
+                thumbnail: true,
+                sub_categories: { populate: { thumbnail: true } },
+              },
+            });
+          return categoriesList;
+        };
+
+        try {
+          var pagination = ctx.request.query.pagination;
+          var allCategories;
+          var meta;
+
+          if (pagination) {
+            if (Object.keys(pagination).length > 0) {
+              const { offset, limit } = getPagination(
+                pagination.page,
+                pagination.size
+              );
+              allCategories = await getCategories(offset, limit);
+              meta = {
+                pagination: {
+                  page:
+                    parseInt(pagination.page) < 1
+                      ? 1
+                      : parseInt(pagination.page),
+                  pageSize: parseInt(pagination.size),
+                  pageCount: Math.ceil(
+                    allCategories[1] / parseInt(pagination.size)
+                  ),
+                  total: allCategories[1],
+                },
+              };
+            }
+          } else {
+            allCategories = await getCategories(null, null);
+            meta = {
+              pagination: {
+                page: 1,
+                pageSize: allCategories[1],
+                pageCount: 1,
+                total: allCategories[1],
+              },
+            };
+          }
+
+          return ctx.send({ data: allCategories[0], meta }, 200);
+        } catch (err) {
+          console.log(err);
+          return ctx.send(err, 400);
+        }
+      } catch (err) {
+        console.log(err);
+        return ctx.send(err, 400);
+      }
+    },
     //edit category
     updateCategory: async (ctx, next) => {
       try {

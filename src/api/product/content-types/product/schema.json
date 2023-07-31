@@ -66,6 +66,12 @@
     "isActive": {
       "type": "boolean",
       "default": true
+    },
+    "product_metric": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product-metric.product-metric",
+      "mappedBy": "product"
     }
   }
 }

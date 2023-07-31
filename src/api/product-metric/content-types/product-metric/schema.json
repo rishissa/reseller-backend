@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "product_metrics",
+  "info": {
+    "singularName": "product-metric",
+    "pluralName": "product-metrics",
+    "displayName": "Product Metrics",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product.product",
+      "inversedBy": "product_metric"
+    },
+    "view_count": {
+      "type": "integer"
+    },
+    "ordered_count": {
+      "type": "integer"
+    },
+    "shares_count": {
+      "type": "integer"
+    },
+    "revenue_generated": {
+      "type": "integer"
+    },
+    "profit_margin": {
+      "type": "decimal"
+    },
+    "premium_plan_orders": {
+      "type": "integer"
+    }
+  }
+}

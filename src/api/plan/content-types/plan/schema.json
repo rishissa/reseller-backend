@@ -65,6 +65,12 @@
     },
     "description": {
       "type": "text"
+    },
+    "plan_metric": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::plan-metric.plan-metric",
+      "mappedBy": "plan"
     }
   }
 }
