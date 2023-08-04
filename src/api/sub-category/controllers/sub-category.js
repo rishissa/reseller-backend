@@ -27,6 +27,8 @@ module.exports = createCoreController(
           .findOne({
             where: { id: id },
             populate: {
+              thumbnail: true,
+              category: true,
               products: {
                 populate: {
                   thumbnail: true,

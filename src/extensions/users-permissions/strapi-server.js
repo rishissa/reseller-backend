@@ -95,7 +95,8 @@ module.exports = (plugin) => {
     const password = Math.floor(Math.random() * 90000000) + 10000000;
     // console.log(password)
     body["confirmed"] = false;
-    body["role"] = ["1"];
+    body["role"] = ["6"];
+    body["phone"] = `+91${phone}`;
     let hashPass = await bcrypt.hash(password.toString(), 10);
     if (body.password) {
       body["password"] = hashPass;

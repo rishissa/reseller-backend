@@ -28,7 +28,7 @@ module.exports = createCoreController(
       try {
         console.log("Hello from categories");
         const pagination = ctx.request.query;
-        console.log(pagination.pagination.page);
+        // console.log(pagination.pagination.page);
         var categories;
         var allCategories;
         var meta;
@@ -81,7 +81,7 @@ module.exports = createCoreController(
           categories = allCategories;
         }
 
-        return { data: categories, meta };
+        return { categories, meta };
       } catch (err) {
         console.log(err);
         return ctx.send(err, 400);

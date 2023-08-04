@@ -38,19 +38,31 @@
       "enum": [
         "WHATSAPP",
         "INSTAGRAM",
-        "SOCIAL_SELLER_WEBSITE"
+        "SOCIAL_SELLER_WEBSITE",
+        "YOUTUBE_CHANNEL"
       ]
     },
     "user": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "oneToOne",
       "target": "plugin::users-permissions.user",
-      "mappedBy": "lead"
+      "mappedBy": "lead_raised"
     },
     "product": {
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::product.product"
+    },
+    "assigned_to": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "consumer_note": {
+      "type": "text"
+    },
+    "staff_note": {
+      "type": "text"
     }
   }
 }

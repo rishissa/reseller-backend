@@ -1,4 +1,4 @@
-const domain = "http://localhost:1337";
+const domain = "https://api.hangs.in";
 const baseURL = domain + "/api";
 
 const PaymentStatus = {
@@ -73,6 +73,24 @@ const ActivityStatus = {
   wallet_credit: "WALLET_CREDIT",
 };
 
+const NotificationType = {
+  product: "PRODUCT",
+  collection: "COLLECTION",
+  order: "ORDER",
+  subscription: "SUBSCRIPTION",
+  promotion: "PROMOTION",
+  information: "INFORMATION",
+  transaction: "TRANSACTION",
+};
+
+const LeadStatuses = {
+  new: "NEW",
+  calling: "CALLING",
+  called: "CALLED",
+  converted: "CONVERTED",
+  completed: "COMPLETED",
+};
+
 module.exports = {
   PaymentStatus: PaymentStatus,
   order_status: OrderStatuses,
@@ -83,4 +101,6 @@ module.exports = {
   domain,
   txn_purpose,
   activity_status: ActivityStatus,
+  notify_type: NotificationType,
+  lead_status: LeadStatuses,
 };
