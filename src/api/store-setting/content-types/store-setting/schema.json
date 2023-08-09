@@ -1,0 +1,70 @@
+{
+  "kind": "singleType",
+  "collectionName": "store_settings",
+  "info": {
+    "singularName": "store-setting",
+    "pluralName": "store-settings",
+    "displayName": "Store Setting",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "store_mode": {
+      "type": "enumeration",
+      "enum": [
+        "WHATSAPP",
+        "B2B",
+        "ECOM",
+        "RESELLER_ECOM"
+      ]
+    },
+    "primary_color": {
+      "type": "string"
+    },
+    "secondary_color": {
+      "type": "string"
+    },
+    "bg_color": {
+      "type": "string"
+    },
+    "text_color": {
+      "type": "string"
+    },
+    "button_color": {
+      "type": "string"
+    },
+    "is_app_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_maintenance_mode": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_store_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "store_inactive_message": {
+      "type": "text"
+    },
+    "store_maintenance_message": {
+      "type": "text"
+    },
+    "is_pricing_visible": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_cart_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_wallet_enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

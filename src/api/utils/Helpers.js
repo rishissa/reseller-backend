@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const addCommission = (amount) => {
   const percentage = 2;
   const totalAmount = amount + (amount * percentage) / 100;

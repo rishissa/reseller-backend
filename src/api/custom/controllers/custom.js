@@ -38,6 +38,10 @@ const { faker } = require("@faker-js/faker");
 const serviceAccount = require("../../../../config/resell-demo-otpauth-firebase-adminsdk-vys9k-5e6f672759.json");
 const admin = require("firebase-admin");
 const { createActivity } = require("../../utils/Helpers");
+const razorpayService = require("../services/razorpay");
+const { commissionAmount } = require("../../utils/RzpXCommissio");
+const { tz_reasons, tz_types } = require("../../utils/WalletConstants");
+const { generateTransactionId } = require("../../utils/GenerateTxnId");
 
 var browser = null;
 /*
@@ -310,8 +314,6 @@ module.exports = {
             id: id,
           },
         });
-      console.log(id);
-      console.log(userInfo);
       let tagList = ["active", "declined", "delivered", "all"];
 
       if (!tagList.includes(tag)) {
@@ -325,6 +327,7 @@ module.exports = {
       if (tag === "all") {
         listOfOrders = await strapi.db.query("api::order.order").findMany({
           where: { users_permissions_user: parseInt(userInfo.id) },
+          orderBy: { id: "desc" },
           populate: {
             order_products: {
               populate: {
@@ -351,6 +354,8 @@ module.exports = {
               { status: "PROCESSING" },
             ],
           },
+          sort: { id: "desc" },
+
           populate: {
             order_products: {
               populate: {
@@ -373,6 +378,7 @@ module.exports = {
             users_permissions_user: userInfo.id,
             status: "DELIVERED",
           },
+          sort: { id: "desc" },
           populate: {
             order_products: {
               populate: {
@@ -393,11 +399,13 @@ module.exports = {
         listOfOrders = await strapi.entityService.findMany("api::order.order", {
           filters: {
             users_permissions_user: userInfo.id,
-            $and: [
+            $or: [
               { status: "DECLINED" },
               { statusUser: "CANCELLATION_ACCEPTED" },
             ],
           },
+          sort: { id: "desc" },
+
           populate: {
             order_products: {
               populate: {
@@ -688,6 +696,7 @@ module.exports = {
                 expiresIn: "7d",
               }
             );
+
             delete user.password;
             return ctx.send(
               {
@@ -930,7 +939,6 @@ module.exports = {
   resellerWithdraw: async (ctx, netx) => {
     try {
       const body = ctx.request.body;
-
       const { id } = await strapi.plugins[
         "users-permissions"
       ].services.jwt.getToken(ctx);
@@ -938,27 +946,27 @@ module.exports = {
       const user = await strapi
         .query("plugin::users-permissions.user")
         .findOne({ where: { id: id } });
-
+      body["amount"] = user.wallet_balance;
       var globalVar = await strapi.entityService.findMany("api::global.global");
 
-      if (parseFloat(body.amount) > parseFloat(user.wallet_balance)) {
-        return ctx.send(
-          { message: "Entered amount exceeds your wallet balance" },
-          400
-        );
-      }
+      // if (parseFloat(body.amount) > parseFloat(user.wallet_balance)) {
+      //   return ctx.send(
+      //     { message: "Entered amount exceeds your wallet balance" },
+      //     400
+      //   );
+      // }
 
-      if (parseFloat(body.amount) < parseInt(globalVar.withdrawLimit)) {
-        return ctx.send(
-          {
-            message: `Entered amount must be greater than ${globalVar.withdrawLimit}`,
-          },
-          400
-        );
-      }
+      // if (parseFloat(body.amount) < parseInt(globalVar.withdrawLimit)) {
+      //   return ctx.send(
+      //     {
+      //       message: `Entered amount must be greater than ${globalVar.withdrawLimit}`,
+      //     },
+      //     400
+      //   );
+      // }
 
       let schema = {
-        account_number: "2323230021410569",
+        account_number: globalVar.razorpayXAccountNumber,
         currency: "INR",
         purpose: "payout",
         queue_if_low_balance: true,
@@ -968,7 +976,7 @@ module.exports = {
       var totalAmount;
       if (body.hasOwnProperty("upiId")) {
         totalAmount = commissionAmount(parseInt(body.amount), "upiId");
-
+        console.log(totalAmount);
         let vpaMode = {
           mode: "UPI",
           amount: parseInt(totalAmount),
@@ -1019,15 +1027,10 @@ module.exports = {
         });
       }
 
-      const payoutSeller = await axios.post(
-        "https://api.razorpay.com/v1/payouts",
+      const payoutSeller = await razorpayService.payoutService(
         schema,
-        {
-          auth: {
-            username: globalVar.razorpayKey,
-            password: globalVar.razorpaySecret,
-          },
-        }
+        globalVar.razorpayKey,
+        globalVar.razorpaySecret
       );
       if (payoutSeller.status === 200) {
         const updateUser = await strapi
@@ -1036,10 +1039,9 @@ module.exports = {
             where: { id: id },
             data: {
               wallet_balance:
-                parseFloat(user.wallet_balance) - parseInt(body.amount),
+                parseFloat(user.wallet_balance) - parseInt(totalAmount),
             },
           });
-
         const walletLog = await strapi.db.query("api::wallet.wallet").create({
           data: {
             amount: parseInt(body.amount),
@@ -1048,7 +1050,6 @@ module.exports = {
             users_permissions_user: id,
           },
         });
-
         const createTxn = await strapi.db
           .query("api::transaction.transaction")
           .create({
@@ -1062,7 +1063,6 @@ module.exports = {
               amount: parseInt(body.amount),
             },
           });
-
         let activity_data = {
           event: activity_status.reseller_withdraw,
           user: user.id,
@@ -1073,6 +1073,7 @@ module.exports = {
 
         return ctx.send({ message: "Payout Done" }, 200);
       }
+      console.log("Payout Not Done");
       return ctx.send({ message: "Payout Not Done" }, payoutSeller.status);
     } catch (err) {
       console.log(JSON.stringify(err));

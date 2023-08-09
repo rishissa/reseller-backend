@@ -18,6 +18,7 @@ const {
   order_status,
   txn_purpose,
   activity_status,
+  notify_type,
 } = require("../../../../config/constants");
 const Razorpay = require("razorpay");
 const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
@@ -197,34 +198,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       }
 
       // console.log(totalCost);
-      if (payment_mode === "COD") {
-        if (plan === null) {
-          totalAmount =
-            parseFloat(globalVar.codPrepaidAmount) +
-            parseFloat(globalVar.shippingPrice);
-          totalAmount = commission(totalAmount);
-        }
-
-        if (plan) {
-          if (plan.codAllowed === true) {
-            if (plan.codPrice === null || plan.codPrice === 0) {
-              totalAmount =
-                parseFloat(globalVar.codPrepaidAmount) +
-                parseFloat(globalVar.shippingPrice);
-              totalAmount = commission(totalAmount);
-            } else {
-              totalAmount =
-                parseFloat(plan.codPrice) + parseFloat(globalVar.shippingPrice);
-              totalAmount = commission(totalAmount);
-            }
-          } else {
-            return ctx.send(
-              { message: `COD is not allowed in ${plan.name} plan` },
-              400
-            );
-          }
-        }
-      }
 
       if (payment_mode === "COD") {
         if (plan === null) {
@@ -274,10 +247,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       }
       //RazorPay TXN
       if (payment_mode === "WALLET") {
-        const jwt = ctx.request.headers.authorization.slice(
-          7,
-          ctx.request.headers.authorization.length
-        );
         // console.log(totalAmount);
         // console.log(userInfo.wallet_balance);
         if (userInfo.isAdmin) {
@@ -356,16 +325,17 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         };
 
         const activity = createActivity(activity_data, strapi);
-        console.log(products);
         const fcmData = {
           title: "Order Placed",
           body: `Your Order has been placed successfully`,
           image:
             order_data.order_products[0].product_variant.product.thumbnail.id,
           description: `Your Order for ${order.id} has been placed successfully`,
-          type: "ORDER",
+          type: notify_type.order,
           data: `${order.id}`,
           users_permissions_user: user_id,
+          targetType: "token",
+          targetValue: userInfo.fcmToken,
         };
         //create notification entry
         const notification = await strapi.db
@@ -374,7 +344,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         const sendNotification = await fcmNotify(
           fcmData,
           userInfo.fcmToken,
-          jwt,
           notification.id
         );
         //entry on txn table
@@ -441,7 +410,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           "api::order.order",
           {
             data: {
-              slug: longTime,
+              slug: generateOrderUid(),
               order_products: [...orderProducts],
               address: consumer.addressID,
               status: order_status.new,
@@ -490,11 +459,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       const { id, isAdmin = false } = await strapi.plugins[
         "users-permissions"
       ].services.jwt.getToken(ctx);
-
-      const jwt = ctx.request.headers.authorization.slice(
-        7,
-        ctx.request.headers.authorization.length
-      );
 
       let order = await strapi.db.query("api::order.order").findOne({
         where: { rzpayOrderId: razorpay_order_id },
@@ -622,9 +586,11 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           body: `Your Order has been placed successfully`,
           image: order.order_products[0].product_variant.product.thumbnail.id,
           description: `Your Order for ${products} has been placed successfully`,
-          type: "ORDER",
+          type: notify_type.order,
           data: `${order.id}`,
           users_permissions_user: order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: userInfo.fcmToken,
         };
         //create notification entry
         const notification = await strapi.db
@@ -633,7 +599,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         const sendNotification = await fcmNotify(
           fcmData,
           userInfo.fcmToken,
-          jwt,
           notification.id
         );
 
@@ -676,8 +641,10 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               },
             },
             order: {
-              address: true,
-              users_permissions_user: true,
+              populate: {
+                address: true,
+                users_permissions_user: true,
+              },
             },
           },
         });
@@ -719,6 +686,26 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
         const activity = createActivity(activity_data, strapi);
 
+        const fcmData = {
+          title: "Order Accepted",
+          body: `Your Order has been accepted successfully`,
+          image: orderDetails.product_variant.product.thumbnail.id,
+          description: `Your Order for ${orderDetails.product_variant.name} has been acceped successfully`,
+          type: notify_type.order,
+          data: `${orderDetails.id}`,
+          users_permissions_user: orderDetails.order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: orderDetails.order.users_permissions_user.fcmToken,
+        };
+        //create notification entry
+        const notification = await strapi.db
+          .query("api::notification.notification")
+          .create({ data: fcmData });
+        const sendNotification = await fcmNotify(
+          fcmData,
+          orderDetails.order.users_permissions_user.fcmToken,
+          notification.id
+        );
         // let acceptMail = await mailTemplate.mailServer(data);
         ctx.send({ message: "Order Accepted Successfully" });
       }
@@ -764,19 +751,21 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               },
             },
             order: {
-              address: true,
+              populate: {
+                address: true,
+                users_permissions_user: true,
+              },
             },
           },
         });
       if (order.order.payment_mode === "PREPAID") {
         // for (let i = 0; i < order.order_products.length; i++) {
-        totalAmount += parseFloat(order.order_price);
+        totalAmount = parseFloat(order.order_price);
         // }
         totalAmount += globalVar.shippingPrice;
       } else {
         totalAmount += globalVar.codPrepaidAmount;
       }
-
       const date = new Date(); // Get the current date
       const dateString = date.toDateString();
       const [dayOfWeek, month, day, year] = dateString.split(" ");
@@ -839,6 +828,27 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
         const activity = createActivity(activity_data, strapi);
 
+        //send notification
+        const fcmData = {
+          title: "Order Rejected",
+          body: `Your Order has been Rejected`,
+          image: order.product_variant.product.thumbnail.id,
+          description: `Your Order for ${order.product_variant.name} has been rejected`,
+          type: notify_type.order,
+          data: `${order.id}`,
+          users_permissions_user: order.order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: order.order.users_permissions_user.fcmToken,
+        };
+        //create notification entry
+        const notification = await strapi.db
+          .query("api::notification.notification")
+          .create({ data: fcmData });
+        const sendNotification = await fcmNotify(
+          fcmData,
+          order.order.users_permissions_user.fcmToken,
+          notification.id
+        );
         return ctx.send({ message: "Order Declined!!" }, 201);
       } else {
         return { message: "Order Already Rejected!!" };
@@ -1049,12 +1059,15 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         .findOne({
           where: { id: order_id },
           populate: {
+            product_variant: {
+              populate: { product: { populate: { thumbnail: true } } },
+            },
             order: {
               populate: { users_permissions_user: true },
             },
           },
         });
-      console.log(order_prod);
+      console.log(order_prod.order.users_permissions_user.id);
       if (order_prod.status !== order_status.delivered) {
         return ctx.send({ message: "Order is not yet delivered" }, 400);
       }
@@ -1092,12 +1105,33 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         });
 
       let activity_data = {
-        event: activity_status.order_placed,
-        user: userInfo.id,
+        event: activity_status.reseller_payout,
+        user: order_prod.order.users_permissions_user.id,
         description: `Payout of amount ₹${payoutAmt} done for Reseller: ${order_prod.order.users_permissions_user.name}`,
       };
 
       const activity = createActivity(activity_data, strapi);
+
+      const fcmData = {
+        title: "Payout Completed",
+        body: `Your Payout of ₹${payoutAmt} for Order: ${order_prod.order.slug} has been processed successfully`,
+        image: order_prod.product_variant.product.thumbnail.id,
+        description: `Your Payout of ₹${payoutAmt} for Order: ${order_prod.order.slug} has been processed successfully`,
+        type: notify_type.order,
+        data: `${order_prod.id}`,
+        users_permissions_user: order_prod.order.users_permissions_user.id,
+        targetType: "token",
+        targetValue: order_prod.order.users_permissions_user.fcmToken,
+      };
+      //create notification entry
+      const notification = await strapi.db
+        .query("api::notification.notification")
+        .create({ data: fcmData });
+      const sendNotification = await fcmNotify(
+        fcmData,
+        order_prod.order.users_permissions_user.fcmToken,
+        notification.id
+      );
 
       return ctx.send(payout, 200);
     } catch (err) {
@@ -1316,6 +1350,15 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         .findOne({
           where: { id: order_id },
           populate: {
+            product_variant: {
+              populate: {
+                product: {
+                  populate: {
+                    thumbnail: true,
+                  },
+                },
+              },
+            },
             order: {
               populate: {
                 users_permissions_user: true,
@@ -1327,9 +1370,9 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         return ctx.send({ message: `Invalid Order ID ${order_id}` }, 400);
       }
 
-      if (orderProduct.order.isResellerOrder === false) {
-        return ctx.send({ message: `Order must be a Reseller Order` }, 400);
-      }
+      // if (orderProduct.order.isResellerOrder === false) {
+      //   return ctx.send({ message: `Order must be a Reseller Order` }, 400);
+      // }
 
       if (orderProduct.status === order_status.delivered) {
         return ctx.send(
@@ -1347,34 +1390,56 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         });
 
       if (updateOrder) {
-        let profit =
-          orderProduct.order.users_permissions_user.profit === null
-            ? parseFloat(orderProduct.sellingPrice) -
-              parseFloat(orderProduct.order_price)
-            : parseFloat(orderProduct.order.users_permissions_user.profit) +
-              (parseFloat(orderProduct.sellingPrice) -
-                parseFloat(orderProduct.order_price));
+        if (updateOrder.isResellerOrder) {
+          let profit =
+            orderProduct.order.users_permissions_user.profit === null
+              ? parseFloat(orderProduct.sellingPrice) -
+                parseFloat(orderProduct.order_price)
+              : parseFloat(orderProduct.order.users_permissions_user.profit) +
+                (parseFloat(orderProduct.sellingPrice) -
+                  parseFloat(orderProduct.order_price));
 
-        const updateReseller = await strapi
-          .query("plugin::users-permissions.user")
-          .update({
-            where: { id: orderProduct.order.users_permissions_user.id },
-            data: {
-              profit: profit,
-            },
-          });
+          const updateReseller = await strapi
+            .query("plugin::users-permissions.user")
+            .update({
+              where: { id: orderProduct.order.users_permissions_user.id },
+              data: {
+                profit: profit,
+              },
+            });
+        }
 
         //create activity
         let activity_data = {
           event: activity_status.order_delivered,
           user: orderProduct.order.users_permissions_user.id,
-          description: `Order #${order.slug} has been delivered`,
+          description: `Order #${orderProduct.order.slug} with Product ${orderProduct.product_variant.name} has been delivered`,
         };
 
         const activity = createActivity(activity_data, strapi);
 
+        const fcmData = {
+          title: "Order Delivered",
+          body: `Your Order has been Delivered Successfully`,
+          image: orderProduct.product_variant.product.thumbnail.id,
+          description: `Your Order for ${orderProduct.product_variant.name} has been Delivered`,
+          type: notify_type.order,
+          data: `${orderProduct.id}`,
+          users_permissions_user: orderProduct.order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: orderProduct.order.users_permissions_user.fcmToken,
+        };
+        //create notification entry
+        const notification = await strapi.db
+          .query("api::notification.notification")
+          .create({ data: fcmData });
+        const sendNotification = await fcmNotify(
+          fcmData,
+          orderProduct.order.users_permissions_user.fcmToken,
+          notification.id
+        );
         return ctx.send(
-          { message: `Order ${order_id} has been updated successfully` },
+          { message: `Order ${order_id} has been Delivered successfully` },
           200
         );
       }

@@ -1,6 +1,10 @@
 "use strict";
 
-const { baseURL, activity_status } = require("../../../../config/constants");
+const {
+  baseURL,
+  activity_status,
+  notify_type,
+} = require("../../../../config/constants");
 const axios = require("axios");
 /**
  * product controller
@@ -10,6 +14,8 @@ const { createCoreController } = require("@strapi/strapi").factories;
 
 const { getPagination } = require("../../utils/Pagination");
 const { createActivity } = require("../../utils/Helpers");
+const { fcmNotify } = require("../../utils/fcmNotify");
+const { genProdSlug } = require("../../utils/ProductSlugGen");
 
 module.exports = createCoreController("api::product.product", ({ strapi }) => ({
   async create(ctx, next) {
@@ -19,6 +25,8 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       ].services.jwt.getToken(ctx);
       console.log("Into Changing Defaults Products API");
       const variants = ctx.request.body.data.variants;
+      ctx.request.body.data.slug = genProdSlug(ctx.request.body.data.name);
+
       const response = await super.create(ctx);
       console.log(response);
       //create variant
@@ -73,11 +81,28 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       let activity_data = {
         event: activity_status.new_product,
         user: id,
-        description: `New Product ${response.data.name} has been Added`,
+        description: `New Product ${response.data.attributes.name} has been Added`,
       };
 
       const activity = createActivity(activity_data, strapi);
 
+      //send notification
+      const fcmData = {
+        title: "New Product Added",
+        body: `${response.data.attributes.name} starting @${newVariants[0].price}`,
+        image: ctx.request.body.data.thumbnail,
+        // description: `Your Order for ${order.product_variant.name} has been rejected`,
+        type: notify_type.product,
+        data: `${response.data.id}`,
+        users_permissions_user: id,
+        targetType: "topic",
+        targetValue: "global",
+      };
+      //create notification entry
+      const notification = await strapi.db
+        .query("api::notification.notification")
+        .create({ data: fcmData });
+      const sendNotification = await fcmNotify(fcmData, id, notification.id);
       return ctx.send(response, 200);
     } catch (err) {
       console.log(err);
@@ -308,14 +333,12 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
   //get n random products
   async getNRandomProducts(ctx, next) {
     try {
-      const n = ctx.request.query.n;
-      const products = (
-        await strapi.db.connection
-          .from(strapi.getModel("api::product.product").collectionName)
-          .orderByRaw("RANDOM()")
-          .limit(n)
-      ).map((it) => it.id);
+      const n = 10;
 
+      let { rows } = await strapi.db.connection.raw(
+        `select id from products where is_active IS true order by random() limit ${n};`
+      );
+      var products = rows.map((key) => key.id);
       const list = await strapi.entityService.findMany("api::product.product", {
         filters: {
           id: {

@@ -5,20 +5,20 @@ const commissionAmount = (amount, mode) => {
   if (mode === "upiId") {
     switch (true) {
       case amount <= 1000:
-        totalAmount = addCommission(amount, 1.5);
+        totalAmount = deductCommission(amount, 1.5);
         break;
       case amount <= 25000:
-        totalAmount = addCommission(amount, 3);
+        totalAmount = deductCommission(amount, 3);
         break;
-      case amount > 2500:
-        totalAmount = addCommission(amount, 7);
+      case amount > 25000:
+        totalAmount = deductCommission(amount, 7);
         break;
 
       default:
         break;
     }
   } else {
-    totalAmount = addCommission(amount, 2);
+    totalAmount = deductCommission(amount, 2);
   }
 
   return totalAmount;
@@ -27,6 +27,12 @@ const commissionAmount = (amount, mode) => {
 const addCommission = (amount, per) => {
   const percentage = per;
   const totalAmount = amount + (amount * percentage) / 100;
+  return totalAmount;
+};
+
+const deductCommission = (amount, dedAmt) => {
+  // const percentage = per;
+  const totalAmount = amount - dedAmt;
   return totalAmount;
 };
 

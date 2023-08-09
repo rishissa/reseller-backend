@@ -1,4 +1,6 @@
 "use strict";
+const admin = require("firebase-admin");
+const serviceAccount = require("../config/resell-demo-otpauth-firebase-adminsdk-vys9k-5e6f672759.json");
 
 module.exports = {
   /**
@@ -26,5 +28,10 @@ module.exports = {
    * This gives you an opportunity to set up your data model,
    * run jobs, or perform some special logic.
    */
-  bootstrap(/*{ strapi }*/) {},
+  bootstrap(/*{ strapi }*/) {
+    // admin.initializeApp({
+    //   credential: admin.credential.cert(serviceAccount),
+    //   // Your Firebase admin SDK configuration
+    // });
+  },
 };

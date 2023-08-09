@@ -3,7 +3,7 @@ const axios = require("axios");
 const { baseURL, domain } = require("../../../config/constants");
 const firebase = require("firebase-admin");
 
-const fcmNotify = async (data, token, jwt, id) => {
+const fcmNotify = async (data, token, id) => {
   try {
     const notification = await strapi.db
       .query("api::notification.notification")
@@ -14,19 +14,15 @@ const fcmNotify = async (data, token, jwt, id) => {
         },
       });
     let message = {
-      notification: {
-        title: "New Message",
-        body: "You have a new message",
-        image: domain + notification.image.url,
-      },
       data: {
         title: data.title,
         body: data.body,
-        image: domain + notification.image.url,
-        message: "Hello, how are you?",
+        image: `${domain}${notification.image.url}`,
+        // message: "Hello, how are you?",
       },
-      token: token,
+      // token: token,
     };
+    message[data.targetType] = data.targetValue;
     const response = await firebase.messaging().send(message);
     console.log(response);
     return response;

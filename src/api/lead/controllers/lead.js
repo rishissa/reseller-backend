@@ -1,6 +1,9 @@
 "use strict";
 
-const { activity_status } = require("../../../../config/constants");
+const {
+  activity_status,
+  lead_status,
+} = require("../../../../config/constants");
 const { createActivity } = require("../../utils/Helpers");
 
 /**
@@ -13,6 +16,7 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
   async create(ctx, next) {
     try {
       console.log("Overriding Lead Create");
+      ctx.request.body.data.status = ctx.request.status;
       const response = await super.create(ctx);
       const { id, isAdmin = false } = await strapi.plugins[
         "users-permissions"
