@@ -16,7 +16,7 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
   async create(ctx, next) {
     try {
       console.log("Overriding Lead Create");
-      ctx.request.body.data.status = lead_status.new;
+      ctx.request.body.data.status = ctx.request.status;
       const response = await super.create(ctx);
       const { id, isAdmin = false } = await strapi.plugins[
         "users-permissions"

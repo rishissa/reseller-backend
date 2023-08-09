@@ -2,6 +2,7 @@ const axios = require("axios");
 const bcrypt = require("bcryptjs");
 const { formatDate } = require("../../api/utils/DateHelper");
 const { getPagination } = require("../../../src/api/utils/Pagination");
+const JWT = require("jsonwebtoken");
 
 module.exports = (plugin) => {
   //Handle User Auth
@@ -119,6 +120,7 @@ module.exports = (plugin) => {
   //Handle User(me) function
   const me = plugin.controllers.user.me;
   plugin.controllers.user.me = async (ctx) => {
+    console.log("inside USer me");
     const { id } = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);
@@ -128,6 +130,7 @@ module.exports = (plugin) => {
       populate: {
         role: true,
         subscriptions: {
+          // where: { paymentId: { $not: { $null: true } } },
           populate: {
             plan: {
               populate: { thumbnail: true },
@@ -136,7 +139,6 @@ module.exports = (plugin) => {
         },
       },
     });
-
     var recentSub;
     //check active subscription
     if (subs.subscriptions.length > 0) {
@@ -166,12 +168,22 @@ module.exports = (plugin) => {
   plugin.controllers.user.find = async (ctx) => {
     try {
       const pagination = ctx.request.query.pagination;
+
+      var tag = ctx.request.query.role;
+
+      if (!tag) {
+        tag = [7, 6, 9, 8];
+      } else {
+        tag = [tag];
+      }
+
       var data;
       var meta;
       const list = async (offset, limit) => {
         const users = await strapi
           .query("plugin::users-permissions.user")
           .findWithCount({
+            where: { role: { id: { $in: tag } } },
             select: [
               "id",
               "username",

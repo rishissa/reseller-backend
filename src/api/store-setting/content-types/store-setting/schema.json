@@ -4,7 +4,8 @@
   "info": {
     "singularName": "store-setting",
     "pluralName": "store-settings",
-    "displayName": "Store Setting"
+    "displayName": "Store Setting",
+    "description": ""
   },
   "options": {
     "draftAndPublish": false
@@ -52,6 +53,18 @@
     },
     "store_maintenance_message": {
       "type": "text"
+    },
+    "is_pricing_visible": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_cart_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_wallet_enabled": {
+      "type": "boolean",
+      "default": true
     }
   }
 }

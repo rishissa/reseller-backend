@@ -15,18 +15,18 @@ module.exports = (config, { strapi }) => {
     const subs = ctx.request.userInfo;
 
     var recentSub;
-    console.log(subs);
+    // console.log(subs);
     if (subs.subscriptions && subs.subscriptions.length > 0) {
       recentSub = subs.subscriptions.reduce((acc, curr) => {
         return curr.id > acc.id ? curr : acc;
       });
     }
 
-    console.log(recentSub);
+    // console.log(recentSub);
     ctx.request.user_id = subs.id;
     const now = formatDate(new Date());
 
-    console.log(subs.subscriptions);
+    // console.log(subs.subscriptions);
     if (subs.subscriptions.length === 0 || subs.subscriptions === null) {
       ctx.request.user = subs;
       ctx.request.subscriptionOver = true;

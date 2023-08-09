@@ -182,11 +182,11 @@
       "target": "api::activity-log.activity-log",
       "mappedBy": "user"
     },
-    "lead_raised": {
+    "lead_raiseds": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "oneToMany",
       "target": "api::lead.lead",
-      "inversedBy": "user"
+      "mappedBy": "user"
     }
   }
 }

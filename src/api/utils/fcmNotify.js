@@ -23,7 +23,6 @@ const fcmNotify = async (data, token, id) => {
       // token: token,
     };
     message[data.targetType] = data.targetValue;
-
     const response = await firebase.messaging().send(message);
     console.log(response);
     return response;

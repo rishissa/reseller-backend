@@ -154,7 +154,7 @@ module.exports = {
       },
     },
     {
-      method: "POST",
+      method: "PUT",
       path: "/users/withdraw",
       handler: "custom.resellerWithdraw",
       config: {

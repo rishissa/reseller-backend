@@ -27,6 +27,7 @@
       "type": "enumeration",
       "enum": [
         "NEW",
+        "ASSIGNED",
         "CALLING",
         "CALLED",
         "CONVERTED",
@@ -39,14 +40,15 @@
         "WHATSAPP",
         "INSTAGRAM",
         "SOCIAL_SELLER_WEBSITE",
-        "YOUTUBE_CHANNEL"
+        "YOUTUBE_CHANNEL",
+        "APP"
       ]
     },
     "user": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "plugin::users-permissions.user",
-      "mappedBy": "lead_raised"
+      "inversedBy": "lead_raiseds"
     },
     "product": {
       "type": "relation",

@@ -10,8 +10,12 @@ const crypto = require("crypto");
 const {
   txn_purpose,
   activity_status,
+  notify_type,
 } = require("../../../../config/constants");
 const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
+const { fcmNotify } = require("../../utils/fcmNotify");
+const { createActivity } = require("../../utils/Helpers");
+
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
 const { createCoreController } = require("@strapi/strapi").factories;
 
@@ -30,6 +34,7 @@ module.exports = createCoreController(
             },
             populate: {
               subscriptions: {
+                where: { paymentId: { $null: false } },
                 populate: {
                   plan: true,
                 },
@@ -52,11 +57,10 @@ module.exports = createCoreController(
 
     async create(ctx, next) {
       try {
-        console.log(ctx.request.body);
-        const plan_id = ctx.request.body.data.plan;
+        const plan_id = ctx.request.body.plan;
         const data = ctx.request.body;
         const user_id = ctx.request.user_id;
-        const userId = ctx.request.body.data.userId;
+        const userId = ctx.request.body.userId;
         const user = ctx.request.user;
 
         // console.log(user);
@@ -122,14 +126,6 @@ module.exports = createCoreController(
                 .query("api::subscription.subscription")
                 .create({ data: data });
             }
-            //create activity
-            let activity_data = {
-              event: activity_status.new_subscription,
-              user: user.id,
-              description: `New Subscription Added for the User: ${user.name} ID: ${user.id}`,
-            };
-
-            const activity = createActivity(activity_data, strapi);
 
             return ctx.send(razorpayInfo, 200);
           }
@@ -147,10 +143,10 @@ module.exports = createCoreController(
           ctx.request.body;
 
         const recentSub = ctx.request.recentSub;
-        console.log(recentSub);
-        var plan = await strapi.db
-          .query("api::plan.plan")
-          .findOne({ where: { id: recentSub.plan.id } });
+        var plan = await strapi.db.query("api::plan.plan").findOne({
+          where: { id: recentSub.plan.id },
+          populate: { thumbnail: true },
+        });
 
         const { id, isAdmin = false } = await strapi.plugins[
           "users-permissions"
@@ -158,6 +154,9 @@ module.exports = createCoreController(
 
         var globalVar = await strapi.entityService.findMany(
           "api::global.global"
+        );
+        var globalBrand = await strapi.entityService.findMany(
+          "api::global-brand.global-brand"
         );
 
         var secret = globalVar.razorpaySecret;
@@ -228,6 +227,34 @@ module.exports = createCoreController(
               },
             });
 
+          let activity_data = {
+            event: activity_status.new_subscription,
+            user: id,
+            description: `New Subscription Added for the User: ${updateUser.name} ID: ${id}`,
+          };
+
+          const activity = createActivity(activity_data, strapi);
+
+          const fcmData = {
+            title: "✨Congratulations! You're Subscribed!",
+            body: `You're now subscribed to ${globalBrand.name}. Plan: ${plan.name}`,
+            image: plan.thumbnail.id,
+            description: `You're now subscribed to ${globalBrand.name}. Plan: ${plan.name}`,
+            type: notify_type.subscription,
+            data: `${recentSub.id}`,
+            users_permissions_user: id,
+            targetType: "token",
+            targetValue: updateUser.fcmToken,
+          };
+          //create notification entry
+          const notification = await strapi.db
+            .query("api::notification.notification")
+            .create({ data: fcmData });
+          const sendNotification = await fcmNotify(
+            fcmData,
+            updateUser.fcmToken,
+            notification.id
+          );
           return ctx.send({ message: "Payment Verified Successfully" }, 200);
         }
         return ctx.send({ message: "Payment Not Verified" }, 400);

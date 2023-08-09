@@ -17,9 +17,8 @@ module.exports = (config, { strapi }) => {
       "INSTAGRAM",
       "SOCIAL_SELLER_WEBSITE",
       "YOUTUBE_CHANNEL",
+      "APP",
     ];
-
-    const non_user = ["name", "phone", "country_code"];
 
     if (!sources.includes(body.source)) {
       return ctx.send(
@@ -27,10 +26,26 @@ module.exports = (config, { strapi }) => {
         400
       );
     }
+    var status = lead_status.new;
+    let assigned_to_user;
+    if (body.assigned_to) {
+      assigned_to_user = await strapi
+        .query("plugin::users-permissions.user")
+        .findOne({ where: { id: body.assigned_to } });
+
+      if (!assigned_to_user) {
+        status = lead_status.new;
+        return ctx.send(
+          { message: `No User found with the assigned_id ${body.assigned_to}` },
+          400
+        );
+      }
+      status = lead_status.assigned;
+    }
     const schema = Joi.object().keys({
       // status: Joi.string().required(),
       source: Joi.string().required(),
-      assigned_to: Joi.required(),
+      assigned_to: Joi.optional(),
       name: Joi.string().when("user", {
         is: Joi.exist(),
         then: Joi.forbidden(),
@@ -74,6 +89,7 @@ module.exports = (config, { strapi }) => {
       console.log(result.error);
       return (ctx.response.status = 400);
     }
+    ctx.request.status = status;
     await next();
   };
 };

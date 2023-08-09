@@ -30,6 +30,9 @@
     "withdrawLimit": {
       "type": "decimal",
       "required": true
+    },
+    "razorpayXAccountNumber": {
+      "type": "string"
     }
   }
 }

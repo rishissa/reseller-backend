@@ -11,6 +11,8 @@ module.exports = (config, { strapi }) => {
     strapi.log.info("In validate-payout middleware.");
 
     const body = ctx.request.body;
+    console.log(body);
+
     const pay_methods = ["upiId", "accountName", "ifscCode", "accountNumber"];
 
     if (Object.keys(body).length === 0) {
@@ -21,7 +23,7 @@ module.exports = (config, { strapi }) => {
     }
 
     const schema = Joi.object({
-      amount: Joi.number().required(),
+      amount: Joi.number(),
     });
     if (body.amount && Object.keys(body).length === 1) {
       return ctx.send(
