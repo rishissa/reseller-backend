@@ -488,7 +488,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         },
       });
       // return order;
-      console.log(order);
+      // console.log(order);
       var secret = globalVar.razorpaySecret;
       var key = globalVar.razorpayKey;
 
@@ -580,7 +580,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         };
 
         const activity = createActivity(activity_data, strapi);
-
+        console.log(products);
         const fcmData = {
           title: "Order Placed",
           body: `Your Order has been placed successfully`,
@@ -687,8 +687,8 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         const activity = createActivity(activity_data, strapi);
 
         const fcmData = {
-          title: "Order Accepted",
-          body: `Your Order has been accepted successfully`,
+          title: "✅Order Accepted",
+          body: `Your Order for ${orderDetails.product_variant.product.name} ${orderDetails.product_variant.name} has been Accepted!!`,
           image: orderDetails.product_variant.product.thumbnail.id,
           description: `Your Order for ${orderDetails.product_variant.name} has been acceped successfully`,
           type: notify_type.order,
@@ -758,7 +758,10 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             },
           },
         });
-      if (order.order.payment_mode === "PREPAID") {
+      if (
+        order.order.payment_mode === payment_methods.prepaid ||
+        order.order.payment_mode === payment_methods.wallet
+      ) {
         // for (let i = 0; i < order.order_products.length; i++) {
         totalAmount = parseFloat(order.order_price);
         // }
@@ -766,6 +769,8 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       } else {
         totalAmount += globalVar.codPrepaidAmount;
       }
+
+      console.log(totalAmount);
       const date = new Date(); // Get the current date
       const dateString = date.toDateString();
       const [dayOfWeek, month, day, year] = dateString.split(" ");
@@ -780,10 +785,11 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         const addRefundtoWallet = await strapi
           .query("plugin::users-permissions.user")
           .update({
-            where: { id: id },
+            where: { id: order.order.users_permissions_user.id },
             data: {
               wallet_balance:
-                (userInfo.wallet_balance || 0) + parseFloat(totalAmount),
+                (order.order.users_permissions_user.wallet_balance || 0) +
+                parseFloat(totalAmount),
             },
           });
 
@@ -792,7 +798,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           .update({
             where: { id: order_id },
             data: {
-              status: "DECLINED",
+              status: order_status.declined,
             },
           });
 
@@ -801,7 +807,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             amount: totalAmount,
             transaction_type: tz_types.debit,
             reasons: tz_reasons.payout_sent,
-            users_permissions_user: userInfo.id,
+            users_permissions_user: order.order.users_permissions_user.id,
             order: order.order.id,
           },
         });
@@ -830,8 +836,8 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
         //send notification
         const fcmData = {
-          title: "Order Rejected",
-          body: `Your Order has been Rejected`,
+          title: "❌Order Rejected",
+          body: `Your Order for ${order.product_variant.product.name} ${order.product_variant.name} has been Rejected`,
           image: order.product_variant.product.thumbnail.id,
           description: `Your Order for ${order.product_variant.name} has been rejected`,
           type: notify_type.order,
@@ -841,14 +847,37 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           targetValue: order.order.users_permissions_user.fcmToken,
         };
         //create notification entry
-        const notification = await strapi.db
+        const fcmData2 = {
+          title: `🪙Wallet Refund Processed`,
+          body: `Your Wallet has been debited with ₹${totalAmount} for ${order.product_variant.product.name}`,
+          image: order.product_variant.product.thumbnail.id,
+          description: `Your Wallet has been debited with ₹${totalAmount} for ${order.product_variant.product.name}`,
+          type: notify_type.transaction,
+          data: `${order.id}`,
+          users_permissions_user: order.order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: order.order.users_permissions_user.fcmToken,
+        };
+        //create notification entry
+
+        const notification1 = await strapi.db
           .query("api::notification.notification")
           .create({ data: fcmData });
+        const notification2 = await strapi.db
+          .query("api::notification.notification")
+          .create({ data: fcmData2 });
+
         const sendNotification = await fcmNotify(
           fcmData,
           order.order.users_permissions_user.fcmToken,
-          notification.id
+          notification1.id
         );
+        const sendNotificationWallet = await fcmNotify(
+          fcmData2,
+          order.order.users_permissions_user.fcmToken,
+          notification2.id
+        );
+
         return ctx.send({ message: "Order Declined!!" }, 201);
       } else {
         return { message: "Order Already Rejected!!" };

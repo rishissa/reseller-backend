@@ -28,7 +28,6 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       ctx.request.body.data.slug = genProdSlug(ctx.request.body.data.name);
 
       const response = await super.create(ctx);
-      console.log(response);
       //create variant
       var newVariants = [];
       // console.log(variants[0].bulk_pricings);
@@ -76,7 +75,6 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         newVariants.push(newVariant);
       }
       response.data["variants"] = newVariants;
-
       //create activity
       let activity_data = {
         event: activity_status.new_product,

@@ -4,6 +4,8 @@
  * global controller
  */
 
+const axios = require("axios");
+
 const { createCoreController } = require("@strapi/strapi").factories;
 
 module.exports = createCoreController("api::global.global", ({ strapi }) => ({
@@ -68,6 +70,35 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       return ctx.send(data, 200);
     } catch (err) {
       console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  async update(ctx, next) {
+    try {
+      const body = ctx.request.body.data;
+
+      const global = await strapi.db.query("api::global.global").findOne();
+
+      if (body.shiprocket_username || body.shiprocket_password) {
+        if (global.shiprocket_username || global.shiprocket_password) {
+          const generateToken = await axios.post(
+            "https://apiv2.shiprocket.in/v1/external/auth/login",
+            {
+              email: body.shiprocket_username || global.shiprocket_username,
+              password: body.shiprocket_password || global.shiprocket_password,
+            }
+          );
+          if (generateToken.status === 200) {
+            ctx.request.body.data.token = generateToken.data.token;
+          }
+          // console.log(generateToken);
+        }
+      }
+      await super.update(ctx);
+      return ctx.send({ message: "Settings Updated" }, 201);
+    } catch (err) {
+      console.log(JSON.stringify(err));
       return ctx.send(err, 400);
     }
   },

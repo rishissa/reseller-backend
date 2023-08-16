@@ -17,7 +17,7 @@ const fcmNotify = async (data, token, id) => {
       data: {
         title: data.title,
         body: data.body,
-        image: `${domain}${notification.image.url}`,
+        image: notification.image ? `${domain}${notification.image.url}` : "",
         // message: "Hello, how are you?",
       },
       // token: token,

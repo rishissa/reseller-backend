@@ -1,0 +1,90 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ship_rocket_orders",
+  "info": {
+    "singularName": "ship-rocket-order",
+    "pluralName": "ship-rocket-orders",
+    "displayName": "ShipRocket Order",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "order_id": {
+      "type": "string"
+    },
+    "order_date": {
+      "type": "date"
+    },
+    "pickup_location": {
+      "type": "text"
+    },
+    "billing_customer_name": {
+      "type": "string"
+    },
+    "billing_city": {
+      "type": "string"
+    },
+    "billing_pincode": {
+      "type": "string"
+    },
+    "billing_state": {
+      "type": "string"
+    },
+    "billing_country": {
+      "type": "string"
+    },
+    "billing_email": {
+      "type": "string"
+    },
+    "billing_phone": {
+      "type": "string"
+    },
+    "payment_method": {
+      "type": "string"
+    },
+    "shipping_charges": {
+      "type": "decimal"
+    },
+    "giftwrap_charges": {
+      "type": "decimal"
+    },
+    "transaction_charges": {
+      "type": "decimal"
+    },
+    "total_discount": {
+      "type": "decimal"
+    },
+    "order_items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::shiprocket-order-item.shiprocket-order-item"
+    },
+    "sub_total": {
+      "type": "decimal"
+    },
+    "length": {
+      "type": "decimal"
+    },
+    "breadth": {
+      "type": "decimal"
+    },
+    "height": {
+      "type": "decimal"
+    },
+    "weight": {
+      "type": "decimal"
+    },
+    "billing_address": {
+      "type": "text"
+    },
+    "shiprocket_order_id": {
+      "type": "string"
+    },
+    "shipment_id": {
+      "type": "string"
+    }
+  }
+}

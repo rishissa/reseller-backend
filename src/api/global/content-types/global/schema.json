@@ -33,6 +33,20 @@
     },
     "razorpayXAccountNumber": {
       "type": "string"
+    },
+    "shiprocket_username": {
+      "type": "string"
+    },
+    "shiprocket_password": {
+      "type": "string",
+      "private": true
+    },
+    "is_shiprocket_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "token": {
+      "type": "text"
     }
   }
 }

@@ -9,8 +9,10 @@ const JWT = require("jsonwebtoken");
 const {
   order_status,
   activity_status,
+  notify_type,
 } = require("../../../../config/constants");
 const { createActivity } = require("../../utils/Helpers");
+const { fcmNotify } = require("../../utils/fcmNotify");
 
 module.exports = createCoreController(
   "api::custom-courier.custom-courier",
@@ -41,10 +43,12 @@ module.exports = createCoreController(
           .findOne({
             where: { id: order_id },
             populate: {
-              order: true,
-              populate: {
-                product_variant: {
-                  populate: { product: { populate: { thumbnail: true } } },
+              product_variant: {
+                populate: { product: { populate: { thumbnail: true } } },
+              },
+              order: {
+                populate: {
+                  users_permissions_user: { select: ["id", "fcmToken"] },
                 },
               },
             },
@@ -63,7 +67,10 @@ module.exports = createCoreController(
         }
 
         //   console.log(order.dataValues);
-        if (order.status === order_status.accepted) {
+        if (
+          order.status === order_status.accepted ||
+          order.status === order_status.processing
+        ) {
           // const imageID = await axios.post(baseURL + "/upload", data);
           const custom_courier_info = {
             image: ctx.request.body.imageId,
@@ -93,7 +100,6 @@ module.exports = createCoreController(
           //         .url,
           //   });
           // }
-
           const courier = await strapi.db
             .query("api::custom-courier.custom-courier")
             .create({ data: custom_courier_info });
@@ -104,11 +110,30 @@ module.exports = createCoreController(
           let activity_data = {
             event: activity_status.order_shipped,
             user: id,
-            description: `Order #${order.slug} has been Shipped`,
+            description: `Order #${order.order.slug} has been Shipped`,
           };
 
           const activity = createActivity(activity_data, strapi);
-
+          const fcmData = {
+            title: "🚚 Order Shipped",
+            body: `Your Order for ${order.product_variant.product.name} ${order.product_variant.name} has been shipped successfully`,
+            image: order.product_variant.product.thumbnail.id,
+            description: `Your Order for ${order.product_variant.product.name} ${order.product_variant.name} has been shipped successfully`,
+            type: notify_type.order,
+            data: `${order.id}`,
+            users_permissions_user: order.order.users_permissions_user.id,
+            targetType: "token",
+            targetValue: order.order.users_permissions_user.fcmToken,
+          };
+          //create notification entry
+          const notification = await strapi.db
+            .query("api::notification.notification")
+            .create({ data: fcmData });
+          const sendNotification = await fcmNotify(
+            fcmData,
+            order.order.users_permissions_user.fcmToken,
+            notification.id
+          );
           ctx.send({ message: "Order has been shipped" }, 201);
         } else {
           ctx.send(
