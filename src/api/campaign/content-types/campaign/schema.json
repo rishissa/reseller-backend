@@ -4,7 +4,8 @@
   "info": {
     "singularName": "campaign",
     "pluralName": "campaigns",
-    "displayName": "Campaign"
+    "displayName": "Campaign",
+    "description": ""
   },
   "options": {
     "draftAndPublish": false
@@ -23,11 +24,15 @@
     "schedule_time": {
       "type": "datetime"
     },
-    "isActive": {
-      "type": "boolean",
-      "default": true
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "link",
+        "product",
+        "collection"
+      ]
     },
-    "topic": {
+    "data": {
       "type": "string"
     }
   }

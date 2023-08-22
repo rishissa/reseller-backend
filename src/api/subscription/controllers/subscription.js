@@ -16,6 +16,8 @@ const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
 const { fcmNotify } = require("../../utils/fcmNotify");
 const { createActivity } = require("../../utils/Helpers");
 
+const { userMetrics } = require("../../utils/userMetrics");
+
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
 const { createCoreController } = require("@strapi/strapi").factories;
 
@@ -226,6 +228,13 @@ module.exports = createCoreController(
                 isPremium: true,
               },
             });
+
+          let metricData = {
+            id: id,
+            field: "subscriptions_count",
+          };
+
+          const user_metrics = await userMetrics(strapi, metricData);
 
           let activity_data = {
             event: activity_status.new_subscription,

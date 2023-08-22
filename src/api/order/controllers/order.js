@@ -24,6 +24,8 @@ const Razorpay = require("razorpay");
 const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
 const { fcmNotify } = require("../../utils/fcmNotify");
 
+const { userMetrics } = require("../../utils/userMetrics");
+
 const { getPagination } = require("../../utils/Pagination");
 
 var longTime;
@@ -208,22 +210,36 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         }
 
         if (plan) {
-          if (plan.codAllowed === true) {
-            if (plan.codPrice === null || plan.codPrice === 0) {
+          if (plan.name === "Free") {
+            if (plan.codAllowed === true) {
               totalAmount =
                 parseFloat(globalVar.codPrepaidAmount) +
                 parseFloat(globalVar.shippingPrice);
               totalAmount = commission(totalAmount);
             } else {
-              totalAmount =
-                parseFloat(plan.codPrice) + parseFloat(globalVar.shippingPrice);
-              totalAmount = commission(totalAmount);
+              return ctx.send(
+                { message: `COD is not allowed in ${plan.name} plan` },
+                400
+              );
             }
           } else {
-            return ctx.send(
-              { message: `COD is not allowed in ${plan.name} plan` },
-              400
-            );
+            if (plan.codAllowed === true) {
+              if (plan.price === null || plan.price === 0) {
+                totalAmount =
+                  parseFloat(globalVar.codPrepaidAmount) +
+                  parseFloat(globalVar.shippingPrice);
+                totalAmount = commission(totalAmount);
+              } else {
+                totalAmount =
+                  parseFloat(plan.price) + parseFloat(globalVar.shippingPrice);
+                totalAmount = commission(totalAmount);
+              }
+            } else {
+              return ctx.send(
+                { message: `COD is not allowed in ${plan.name} plan` },
+                400
+              );
+            }
           }
         }
       }
@@ -316,6 +332,13 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             },
             where: { id: userInfo.id },
           });
+
+        let metricData = {
+          id: userInfo.id,
+          field: "wallet_orders",
+        };
+
+        const user_metrics = await userMetrics(strapi, metricData);
 
         //create activity
         let activity_data = {
@@ -539,6 +562,17 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             });
           products.push(order.order_products[i].product_variant.name);
         }
+
+        //create metrics
+        let metricData = {
+          id: order.users_permissions_user.id,
+          field:
+            order.payment_mode === payment_methods.cod
+              ? "cod_orders"
+              : "prepaid_orders",
+        };
+
+        const user_metrics = await userMetrics(strapi, metricData);
 
         //create entry in txn table
         const txn_id = await generateTransactionId();

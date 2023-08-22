@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_metrics",
+  "info": {
+    "singularName": "user-metric",
+    "pluralName": "user-metrics",
+    "displayName": "User Metrics",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "wallet_orders": {
+      "type": "integer"
+    },
+    "cod_orders": {
+      "type": "integer"
+    },
+    "prepaid_orders": {
+      "type": "integer"
+    },
+    "subscriptions_count": {
+      "type": "integer"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "metric"
+    }
+  }
+}
