@@ -71,6 +71,12 @@
     },
     "contact": {
       "type": "string"
+    },
+    "subscription": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::subscription.subscription",
+      "inversedBy": "payment_logs"
     }
   }
 }

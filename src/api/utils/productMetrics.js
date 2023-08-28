@@ -4,11 +4,12 @@ module.exports = {
 
     switch (field) {
       case "ordered_count":
+        console.log("From Product Metrics");
         for (const item of data.products_variants) {
           const productVar = await strapi.db
             .query("api::product-variant.product-variant")
             .findOne({
-              where: { id: item },
+              where: { id: item.id },
               populate: { product: { select: ["id"] } },
             });
 
@@ -27,7 +28,6 @@ module.exports = {
                   product: productVar.product.id,
                 },
               });
-            console.log(product_ordered_metrics);
           } else {
             const product_ordered_metrics = await strapi.db
               .query("api::product-metric.product-metric")
@@ -37,16 +37,17 @@ module.exports = {
                   ordered_count: productMetric.ordered_count + 1,
                 },
               });
-            console.log(product_ordered_metrics);
           }
         }
         break;
       case "premium_plan_orders":
+        console.log(data.products_variants);
+        console.log("data.products_variants", data.products_variants);
         for (const item of data.products_variants) {
           const productVar = await strapi.db
             .query("api::product-variant.product-variant")
             .findOne({
-              where: { id: item },
+              where: { id: item.product_variant.id },
               populate: { product: { select: ["id"] } },
             });
 
@@ -65,7 +66,7 @@ module.exports = {
                   product: productVar.product.id,
                 },
               });
-            console.log(product_ordered_metrics);
+            // console.log(product_ordered_metrics);
           } else {
             const product_ordered_metrics = await strapi.db
               .query("api::product-metric.product-metric")
@@ -75,7 +76,7 @@ module.exports = {
                   premium_plan_orders: productMetric.premium_plan_orders + 1,
                 },
               });
-            console.log(product_ordered_metrics);
+            // console.log(product_ordered_metrics);
           }
         }
         break;
@@ -94,7 +95,7 @@ module.exports = {
                 product: data.product_id,
               },
             });
-          console.log(product_view_metrics);
+          // console.log(product_view_metrics);
         } else {
           const product_view_metrics = await strapi.db
             .query("api::product-metric.product-metric")
@@ -104,62 +105,53 @@ module.exports = {
                 view_count: productMetric.view_count + 1,
               },
             });
-          console.log(product_view_metrics);
+          // console.log(product_view_metrics);
         }
 
         break;
       case "profit_margin":
-        console.log("orp", data.ordered_products);
+        const ordered_product = await strapi.db
+          .query("api::order-product.order-product")
+          .findOne({
+            where: { id: data.ordered_product.id },
+            populate: { product_variant: { populate: { product: true } } },
+          });
 
-        for (const item of data.ordered_products) {
-          const ordered_products = await strapi.db
-            .query("api::order-product.order-product")
-            .findOne({
-              where: { id: item.id },
-              populate: { product_variant: { populate: { product: true } } },
-            });
+        const product_metric = await strapi.db
+          .query("api::product-metric.product-metric")
+          .findOne({
+            where: {
+              product: { id: ordered_product.product_variant.product.id },
+            },
+          });
 
-          console.log("opss", ordered_products);
-
-          const productMetric = await strapi.db
+        if (!product_metric) {
+          const product_profit_margin_metrics = await strapi.db
             .query("api::product-metric.product-metric")
-            .findOne({
-              where: {
-                product: { id: ordered_products.product_variant.product.id },
+            .create({
+              data: {
+                profit_margin:
+                  ordered_product.sellingPrice - ordered_product.order_price,
+                product: ordered_product.variant.product.id,
               },
             });
-
-          if (!productMetric) {
-            const product_profit_margin_metrics = await strapi.db
-              .query("api::product-metric.product-metric")
-              .create({
-                data: {
-                  profit_margin:
-                    ordered_products.sellingPrice -
-                    ordered_products.order_price,
-                  product: ordered_products.variant.product.id,
-                },
-              });
-            console.log(product_profit_margin_metrics);
-          } else {
-            const product_profit_margin_metrics = await strapi.db
-              .query("api::product-metric.product-metric")
-              .update({
-                where: { id: productMetric.id },
-                data: {
-                  profit_margin:
-                    productMetric.profit_margin +
-                    ordered_products.sellingPrice -
-                    ordered_products.order_price,
-                },
-              });
-            console.log(product_profit_margin_metrics);
-          }
+        } else {
+          const product_profit_margin_metrics = await strapi.db
+            .query("api::product-metric.product-metric")
+            .update({
+              where: { id: product_metric.id },
+              data: {
+                profit_margin:
+                  product_metric.profit_margin +
+                  ordered_product.sellingPrice -
+                  ordered_product.order_price,
+              },
+            });
         }
 
         break;
       case "revenue_generated":
-        console.log("orp reev", data.ordered_products);
+        // console.log("orp reev", data.ordered_products);
 
         for (const item of data.ordered_products) {
           const ordered_products = await strapi.db
@@ -169,7 +161,7 @@ module.exports = {
               populate: { product_variant: { populate: { product: true } } },
             });
 
-          console.log("opss", ordered_products);
+          // console.log("opss", ordered_products);
 
           const productMetric = await strapi.db
             .query("api::product-metric.product-metric")

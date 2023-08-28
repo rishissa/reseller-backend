@@ -163,6 +163,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
               gallery: true,
               category: true,
               product_variants: true,
+              product_metric: true,
             },
           });
         return products;
@@ -395,6 +396,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
           populate: {
             thumbnail: true,
             product_variants: true,
+            product_metric: true,
           },
         });
       } else {
@@ -413,6 +415,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
           populate: {
             thumbnail: true,
             product_variants: true,
+            product_metric: true,
           },
         });
       }

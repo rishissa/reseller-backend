@@ -82,5 +82,51 @@ module.exports = createCoreController(
         return ctx.send(err, 400);
       }
     },
+    cancelOrder: async (ctx, next) => {
+      try {
+        const { id } = ctx.request.params
+        const global = await strapi.db.query("api::global.global").findOne();
+
+        const order_product = await strapi.db.query("api::order-product.order-product").findOne({
+          where: { $and: [{ id }, { shiprocket_order_item: { $not: null } }] },
+          populate: {
+            shiprocket_order_item: {
+              populate: { ship_rocket_order: true }
+            }
+          }
+        })
+        // const ids = [order_product.shiprocket_order_item.ship_rocket_order.shiprocket_order_id]
+        // var data = JSON.stringify({
+        //   "ids": [order_product.shiprocket_order_item.ship_rocket_order.shiprocket_order_id]
+        // });
+
+        if (order_product) {
+          const cancelShipRocketOrder = await axios.post("https://apiv2.shiprocket.in/v1/external/orders/cancel",
+            { ids: [order_product.shiprocket_order_item.ship_rocket_order.shiprocket_order_id] },
+            {
+              headers: {
+                Authorization: `Bearer ${global.token}`,
+              },
+            }
+          );
+          console.log(cancelShipRocketOrder)
+          if (cancelShipRocketOrder.status == 200) {
+            const updateOrderProduct = await strapi.db.query("api::order-product.order-product").update({
+              where: { id },
+              data: { status: "CANCELLED" }
+            })
+            return ctx.send({ message: "Order has been cancelled!" }, 200)
+          } else {
+            return ctx.send({ error: "Some Error Occured" }, 401)
+          }
+
+        } else {
+          return ctx.send({ error: "Invalid Order Id" }, 401)
+        }
+      } catch (error) {
+        console.log(error);
+        return ctx.send(error, 500);
+      }
+    },
   })
 );

@@ -25,6 +25,7 @@ const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
 const { fcmNotify } = require("../../utils/fcmNotify");
 
 const { userMetrics } = require("../../utils/userMetrics");
+const { productMetrics } = require("../../utils/productMetrics");
 
 const { getPagination } = require("../../utils/Pagination");
 
@@ -224,16 +225,10 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             }
           } else {
             if (plan.codAllowed === true) {
-              if (plan.price === null || plan.price === 0) {
-                totalAmount =
-                  parseFloat(globalVar.codPrepaidAmount) +
-                  parseFloat(globalVar.shippingPrice);
-                totalAmount = commission(totalAmount);
-              } else {
-                totalAmount =
-                  parseFloat(plan.price) + parseFloat(globalVar.shippingPrice);
-                totalAmount = commission(totalAmount);
-              }
+              totalAmount =
+                parseFloat(globalVar.codPrepaidAmount) +
+                parseFloat(globalVar.shippingPrice);
+              totalAmount = commission(totalAmount);
             } else {
               return ctx.send(
                 { message: `COD is not allowed in ${plan.name} plan` },
@@ -337,9 +332,34 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           id: userInfo.id,
           field: "wallet_orders",
         };
-
+        //
         const user_metrics = await userMetrics(strapi, metricData);
 
+        let metricProductData = {
+          // id: userInfo.id,
+          field: "ordered_count",
+          products_variants: arrayOfProds,
+        };
+        const prod_metrics = await productMetrics(strapi, metricProductData);
+        //create activity
+        let metricProductData2 = {
+          // id: userInfo.id,
+          field: "revenue_generated",
+          ordered_products: orderProducts,
+        };
+        const prod_metrics_revenue = await productMetrics(
+          strapi,
+          metricProductData2
+        );
+        let metricProductData3 = {
+          // id: userInfo.id,
+          field: "premium_plan_orders",
+          products_variants: order_data.order_products,
+        };
+        const prod_metrics_revenue2 = await productMetrics(
+          strapi,
+          metricProductData3
+        );
         //create activity
         let activity_data = {
           event: activity_status.order_placed,
@@ -469,7 +489,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
     const crypto = require("crypto");
 
     var products = [];
-
+    var productVar = [];
     var globalVar = await strapi.entityService.findMany("api::global.global");
     var totalAmount = 0;
 
@@ -561,6 +581,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               },
             });
           products.push(order.order_products[i].product_variant.name);
+          productVar.push(order.order_products[i].product_variant);
         }
 
         //create metrics
@@ -574,6 +595,32 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
         const user_metrics = await userMetrics(strapi, metricData);
 
+        //product metrics
+        let metricProductData = {
+          // id: userInfo.id,
+          field: "ordered_count",
+          products_variants: productVar,
+        };
+        const prod_metrics = await productMetrics(strapi, metricProductData);
+        //create activity
+        let metricProductData2 = {
+          // id: userInfo.id,
+          field: "revenue_generated",
+          ordered_products: order.order_products,
+        };
+        const prod_metrics_revenue = await productMetrics(
+          strapi,
+          metricProductData2
+        );
+        let metricProductData3 = {
+          // id: userInfo.id,
+          field: "premium_plan_orders",
+          products_variants: order.order_products,
+        };
+        const prod_metrics_revenue2 = await productMetrics(
+          strapi,
+          metricProductData3
+        );
         //create entry in txn table
         const txn_id = await generateTransactionId();
         const txnTable = await strapi.db

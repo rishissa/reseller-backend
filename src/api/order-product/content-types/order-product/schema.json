@@ -39,6 +39,7 @@
         "INTRANSIT",
         "OUT_FOR_DELIVERY",
         "DELIVERED",
+        "CANCELLED",
         "COMPLETED",
         "PAYOUT_DONE",
         "RTO",

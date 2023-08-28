@@ -3,13 +3,37 @@ const bcrypt = require("bcryptjs");
 const { formatDate } = require("../../api/utils/DateHelper");
 const { getPagination } = require("../../../src/api/utils/Pagination");
 const JWT = require("jsonwebtoken");
+const { activity_status } = require("../../../config/constants");
+const { createActivity } = require("../../api/utils/Helpers");
 
 module.exports = (plugin) => {
   //Handle User Auth
   const auth = plugin.controllers.auth.callback;
   plugin.controllers.auth.callback = async (ctx) => {
+    const userInfo = await strapi
+      .query("plugin::users-permissions.user")
+      .findOne({
+        where: {
+          email: ctx.request.body.identifier,
+        },
+        populate: { role: true },
+      });
+
     await auth(ctx)
-      .then((result) => {})
+      .then((result) => {
+        if (userInfo) {
+          if (userInfo.role.name === "Admin") {
+            //create activity log
+            let activity_data = {
+              event: activity_status.admin_login,
+              user: userInfo.id,
+              description: `Admin Logged In`,
+            };
+
+            const activity = createActivity(activity_data, strapi);
+          }
+        }
+      })
       .catch((err) => {
         if (err.name === errors[0]) {
           return ctx.send({ error: err.name, message: err.message }, 400);
@@ -64,12 +88,43 @@ module.exports = (plugin) => {
   const register = plugin.controllers.auth.register;
   plugin.controllers.auth.register = async (ctx) => {
     console.log("Inside Inbuilt register function");
+    console.log(ctx.request.body);
+    const user_admin = await strapi.plugins[
+      "users-permissions"
+    ].services.jwt.getToken(ctx);
+
+    var user_info;
+    if (user_admin) {
+      user_info = await strapi.query("plugin::users-permissions.user").findOne({
+        where: { id: user_admin.id },
+        populate: { role: true },
+      });
+    }
+
     if (ctx.request.body.phone === undefined) {
       return ctx.send({ message: "Phone Num is required dude!!" }, 400);
     }
 
     let phone = ctx.request.body.phone.slice(-10);
     let phoneNum = ctx.request.body.phone;
+
+    var role;
+
+    if (user_info) {
+      if (user_info.role.name === "Admin") {
+        role = ctx.request.body.role;
+      }
+    } else {
+      const roles = await strapi.db
+        .query("plugin::users-permissions.role")
+        .findMany({ select: ["id", "name"] });
+
+      var roleID = roles.filter((r) => {
+        return r.name.toLowerCase() === "consumer" ? r.id : "";
+      });
+
+      role = roleID[0].id;
+    }
 
     const user = await strapi.query("plugin::users-permissions.user").findOne({
       where: {
@@ -94,9 +149,10 @@ module.exports = (plugin) => {
     }
     const body = ctx.request.body;
     const password = Math.floor(Math.random() * 90000000) + 10000000;
-    // console.log(password)
+    console.log(password)
     body["confirmed"] = false;
-    body["role"] = ["6"];
+
+    body["role"] = role;
     body["phone"] = `+91${phone}`;
     let hashPass = await bcrypt.hash(password.toString(), 10);
     if (body.password) {
@@ -171,10 +227,18 @@ module.exports = (plugin) => {
 
       var tag = ctx.request.query.role;
 
+      const roles = await strapi.db
+        .query("plugin::users-permissions.role")
+        .findMany({ select: ["id", "name"] });
+
       if (!tag) {
-        tag = [7, 6, 9, 8];
+        tag = roles.map((r) => r.id);
       } else {
-        tag = [tag];
+        tag = roles.filter((r) => {
+          return r.name.toLowerCase() === tag.toLowerCase() ? r.id : "";
+        });
+
+        tag = tag[0].id;
       }
 
       var data;
@@ -208,6 +272,7 @@ module.exports = (plugin) => {
               wallets: true,
               transactions: true,
               subscriptions: true,
+              metric: true,
             },
           });
         return users;

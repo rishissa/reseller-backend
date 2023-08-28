@@ -37,6 +37,12 @@
       "relation": "oneToOne",
       "target": "api::order-product.order-product",
       "inversedBy": "shiprocket_order_item"
+    },
+    "ship_rocket_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::ship-rocket-order.ship-rocket-order",
+      "inversedBy": "order_items"
     }
   }
 }

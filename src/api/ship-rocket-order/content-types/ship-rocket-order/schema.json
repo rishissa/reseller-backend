@@ -60,7 +60,8 @@
     "order_items": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::shiprocket-order-item.shiprocket-order-item"
+      "target": "api::shiprocket-order-item.shiprocket-order-item",
+      "mappedBy": "ship_rocket_order"
     },
     "sub_total": {
       "type": "decimal"
