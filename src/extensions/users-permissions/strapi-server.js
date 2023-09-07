@@ -24,13 +24,13 @@ module.exports = (plugin) => {
         if (userInfo) {
           if (userInfo.role.name === "Admin") {
             //create activity log
-            let activity_data = {
-              event: activity_status.admin_login,
-              user: userInfo.id,
-              description: `Admin Logged In`,
-            };
+            // let activity_data = {
+            //   event: activity_status.admin_login,
+            //   user: userInfo.id,
+            //   description: `Admin Logged In`,
+            // };
 
-            const activity = createActivity(activity_data, strapi);
+            // const activity = createActivity(activity_data, strapi);
           }
         }
       })
@@ -87,8 +87,6 @@ module.exports = (plugin) => {
   // Handle User Register
   const register = plugin.controllers.auth.register;
   plugin.controllers.auth.register = async (ctx) => {
-    console.log("Inside Inbuilt register function");
-    console.log(ctx.request.body);
     const user_admin = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);
@@ -149,7 +147,7 @@ module.exports = (plugin) => {
     }
     const body = ctx.request.body;
     const password = Math.floor(Math.random() * 90000000) + 10000000;
-    console.log(password)
+    console.log(password);
     body["confirmed"] = false;
 
     body["role"] = role;
@@ -176,7 +174,6 @@ module.exports = (plugin) => {
   //Handle User(me) function
   const me = plugin.controllers.user.me;
   plugin.controllers.user.me = async (ctx) => {
-    console.log("inside USer me");
     const { id } = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);

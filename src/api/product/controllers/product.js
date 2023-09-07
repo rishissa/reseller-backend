@@ -145,7 +145,9 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
 
   async findAllProducts(ctx, next) {
     try {
-      const pagination = ctx.request.query;
+      const pagination = ctx.request.query.pagination;
+      const filters = ctx.request.filters;
+      const sort = ctx.request.sort;
 
       var meta;
       var products;
@@ -154,8 +156,8 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         const products = await strapi.db
           .query("api::product.product")
           .findWithCount({
-            where: { isActive: true },
-            orderBy: { id: "asc" },
+            orderBy: sort,
+            where: { $and: filters },
             offset: offset,
             limit: limit,
             populate: {
@@ -169,22 +171,24 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         return products;
       };
 
-      if (Object.keys(pagination).length > 0) {
-        const { limit, offset } = getPagination(
-          pagination.pagination.page,
-          pagination.pagination.size
-        );
-        products = await getProducts(offset, limit);
-        meta = {
-          pagination: {
-            page: pagination.pagination.page
-              ? parseInt(pagination.pagination.page)
-              : 1,
-            pageSize: parseInt(pagination.pagination.size),
-            pageCount: Math.ceil(products[1] / limit),
-            total: products[1],
-          },
-        };
+      if (pagination) {
+        if (Object.keys(pagination).length > 0) {
+          const { limit, offset } = getPagination(
+            pagination.page,
+            pagination.size
+          );
+          products = await getProducts(offset, limit);
+          meta = {
+            pagination: {
+              page: pagination.page ? parseInt(pagination.page) : 1,
+              pageSize: pagination.size
+                ? parseInt(pagination.size)
+                : products[1],
+              pageCount: Math.ceil(products[1] / limit),
+              total: products[1],
+            },
+          };
+        }
       } else {
         products = await getProducts(null, null);
         meta = {
@@ -214,7 +218,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
           fields: ["name", "slug", "id", "desc"],
           populate: {
             gallery: true,
-            product_variants: true,
+            product_variants: { populate: { bulk_pricings: true } },
             category: true,
             collection: true,
             thumbnail: true,

@@ -8,7 +8,6 @@ const getPagination = (page, pageSize) => {
   }
 };
 
-
 module.exports = {
-    getPagination
-}
+  getPagination,
+};
