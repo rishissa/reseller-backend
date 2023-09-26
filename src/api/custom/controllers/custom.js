@@ -42,7 +42,9 @@ const { razorpayService } = require("../services/razorpay");
 const { commissionAmount } = require("../../utils/RzpXCommissio");
 const { tz_reasons, tz_types } = require("../../utils/WalletConstants");
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
-const { getPaymentData } = require('../services/razorpay')
+const { pdf_generator } = require("../../utils/PdfGeneratorHelper");
+
+const { getPaymentData } = require("../services/razorpay");
 var browser = null;
 /*
  * A set of functions called "actions" for `custom`
@@ -80,10 +82,11 @@ module.exports = {
     try {
       var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
 
-      var paymentCaptured = paymentDetails.event === "payment.captured" ? true : false;
+      var paymentCaptured =
+        paymentDetails.event === "payment.captured" ? true : false;
       let event = paymentDetails.event;
       let payment_method_rzp = paymentDetails.payload.payment.entity.method;
-      console.log("payment_method_rzp", payment_method_rzp)
+      console.log("payment_method_rzp", payment_method_rzp);
       const secret = "razor@123";
       console.log("Inside WebHooks");
       // decryptions
@@ -92,7 +95,7 @@ module.exports = {
       const digest = shasum.digest("hex");
 
       // razirpay order body
-      const rzpOrder = ctx.request.body
+      const rzpOrder = ctx.request.body;
 
       if (digest === ctx.request.headers["x-razorpay-signature"]) {
         let order;
@@ -100,23 +103,25 @@ module.exports = {
         const getOrder = await strapi.db.query("api::order.order").findOne({
           where: {
             rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
-          }, select: ["*"]
+          },
+          select: ["*"],
         });
         if (getOrder) {
-          order = getOrder
-          type = "order"
+          order = getOrder;
+          type = "order";
         } else {
-          const getSubs = await strapi.db.query("api::subscription.subscription").findOne({
-            where: {
-              orderId: paymentDetails.payload.payment.entity.order_id,
-            }
-          })
-          order = getSubs
-          type = "subs"
+          const getSubs = await strapi.db
+            .query("api::subscription.subscription")
+            .findOne({
+              where: {
+                orderId: paymentDetails.payload.payment.entity.order_id,
+              },
+            });
+          order = getSubs;
+          type = "subs";
         }
 
-        if (order === null) return ctx.send({ error: "Invalid Request" }, 400)
-
+        if (order === null) return ctx.send({ error: "Invalid Request" }, 400);
 
         var entryPaymentLog;
         var paymentData = await getPaymentData({ paymentDetails, order, type });
@@ -125,9 +130,11 @@ module.exports = {
           case "payment.authorized":
             console.log("Payment Authorized", event);
             paymentData.status = PaymentStatus.authorized;
-            entryPaymentLog = await strapi.db.query("api::payment-log.payment-log").create({
-              data: paymentData,
-            });
+            entryPaymentLog = await strapi.db
+              .query("api::payment-log.payment-log")
+              .create({
+                data: paymentData,
+              });
             break;
           case "payment.captured":
             console.log("Payment Captured", event);
@@ -136,42 +143,48 @@ module.exports = {
                 const entry = await strapi.db.query("api::order.order").update({
                   where: {
                     $and: [
-                      { rzpayOrderId: rzpOrder.payload.payment.entity.order_id },
-                      { isPaid: false }]
+                      {
+                        rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
+                      },
+                      { isPaid: false },
+                    ],
                   },
                   data: {
                     isPaid: true,
                     paymentID: rzpOrder.payload.payment.entity.id,
-                    paymentSignature: ctx.request.headers["x-razorpay-signature"],
+                    paymentSignature:
+                      ctx.request.headers["x-razorpay-signature"],
                   },
                 });
               }
 
               paymentData.status = PaymentStatus.captured;
-              entryPaymentLog = await strapi.db.query("api::payment-log.payment-log").create({
-                data: paymentData,
-              });
-
+              entryPaymentLog = await strapi.db
+                .query("api::payment-log.payment-log")
+                .create({
+                  data: paymentData,
+                });
             }
             break;
           case "payment.failed":
             paymentData.status = PaymentStatus.failed;
-            const entryPaymentFailed = await strapi.db.query("api::payment-log.payment-log").create({
-              data: paymentData,
-            });
+            const entryPaymentFailed = await strapi.db
+              .query("api::payment-log.payment-log")
+              .create({
+                data: paymentData,
+              });
             console.log("Payment Failed", event);
             break;
           default:
             break;
         }
-        return ctx.send({ message: "Webhooks executed Successfully", }, 200);
+        return ctx.send({ message: "Webhooks executed Successfully" }, 200);
       } else {
-        ctx.send({ message: "Request is Not Legit", }, 400);
+        ctx.send({ message: "Request is Not Legit" }, 400);
       }
     } catch (err) {
-
-      console.log(err)
-      ctx.send({ message: "Request is Not Legit", }, 500);
+      console.log(err);
+      ctx.send({ message: "Request is Not Legit" }, 500);
     }
   },
 
@@ -194,6 +207,7 @@ module.exports = {
               "isActive",
             ],
             populate: {
+              bulk_pricings: true,
               product: {
                 populate: {
                   thumbnail: true,
@@ -772,69 +786,9 @@ module.exports = {
 
       console.log("BROWSER STARTING: " + new Date().getTime());
 
-      console.log(browser);
-
-      if (browser == null) {
-        browser = await puppeteer.launch({
-          headless: "new",
-          // userDataDir: "../../../chromium_instances",
-          args: [
-            "--disable-features=IsolateOrigins",
-            "--disable-site-isolation-trials",
-            "--autoplay-policy=user-gesture-required",
-            "--disable-background-networking",
-            "--disable-background-timer-throttling",
-            "--disable-backgrounding-occluded-windows",
-            "--disable-breakpad",
-            "--disable-client-side-phishing-detection",
-            "--disable-component-update",
-            "--disable-default-apps",
-            "--disable-dev-shm-usage",
-            "--disable-domain-reliability",
-            "--disable-extensions",
-            "--disable-features=AudioServiceOutOfProcess",
-            "--disable-hang-monitor",
-            "--disable-ipc-flooding-protection",
-            "--disable-notifications",
-            "--disable-offer-store-unmasked-wallet-cards",
-            "--disable-popup-blocking",
-            "--disable-print-preview",
-            "--disable-prompt-on-repost",
-            "--disable-renderer-backgrounding",
-            "--disable-setuid-sandbox",
-            "--disable-speech-api",
-            "--disable-sync",
-            "--hide-scrollbars",
-            "--ignore-gpu-blacklist",
-            "--metrics-recording-only",
-            "--mute-audio",
-            // "--no-default-browser-check",
-            "--no-first-run",
-            "--no-pings",
-            "--no-sandbox",
-            "--no-zygote",
-            "--password-store=basic",
-            "--use-gl=swiftshader",
-            "--use-mock-keychain",
-          ],
-        });
-      }
-
-      // Create a new page
-      console.log("BROWSER STARTED: " + new Date().getTime());
-
-      const page = await browser.newPage();
-      await page.goto(url, {
-        waitUntil: "networkidle0",
-      });
-      console.log("PAGE OPENED: " + new Date().getTime());
-      await page.emulateMediaType("screen");
-
-      await page.waitForSelector("#root", { visible: true });
-
-      console.log("PDF STARTED: " + new Date().getTime());
-      let date = `cat_${new Date().getTime()}`;
       const outputPath = path.join(__dirname, `../../../../../pdfs/file.pdf`);
+      const page = await pdf_generator(url);
+
       const pdf = await page.pdf({
         // path: `../../../../../pdfs/${date}.pdf`,
         // path: `../../../../../pdfs/${date}.pdf`,
@@ -895,6 +849,7 @@ module.exports = {
   resellerWithdraw: async (ctx, netx) => {
     try {
       const body = ctx.request.body;
+      console.log(body);
       const { id } = await strapi.plugins[
         "users-permissions"
       ].services.jwt.getToken(ctx);
@@ -903,6 +858,7 @@ module.exports = {
         .query("plugin::users-permissions.user")
         .findOne({ where: { id: id } });
       body["amount"] = user.wallet_balance;
+
       var globalVar = await strapi.entityService.findMany("api::global.global");
 
       // if (parseFloat(body.amount) > parseFloat(user.wallet_balance)) {

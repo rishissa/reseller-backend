@@ -53,8 +53,9 @@ module.exports = createCoreController(
               },
             },
           });
+
         if (order === null) {
-          ctx.send(
+          return ctx.send(
             {
               message: "No Order found for the user with the given order_id",
             },
@@ -63,7 +64,7 @@ module.exports = createCoreController(
         }
 
         if (order.status === order_status.intransit) {
-          ctx.send({ message: "Order already in transit" }, 400);
+          return ctx.send({ message: "Order already in transit" }, 400);
         }
 
         //   console.log(order.dataValues);
@@ -116,7 +117,9 @@ module.exports = createCoreController(
           const activity = createActivity(activity_data, strapi);
           const fcmData = {
             title: "🚚 Order Shipped",
-            body: `Your Order for ${order.product_variant.product.name} ${order.product_variant.name} has been shipped successfully`,
+            body: `Your Order for ${order.product_variant.product.name} ${
+              order.product_variant.name
+            } has been shipped successfully`,
             image: order.product_variant.product.thumbnail.id,
             description: `Your Order for ${order.product_variant.product.name} ${order.product_variant.name} has been shipped successfully`,
             type: notify_type.order,

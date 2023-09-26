@@ -83,6 +83,18 @@ const NotificationType = {
   transaction: "TRANSACTION",
 };
 
+const ShiprocketStatus = {
+  new: "NEW",
+  cancelled: "CANCELLED",
+  delivered: "DELIVERED",
+  shipped: "SHIPPED",
+  rto_initiated: "RTO INITIATED",
+  rto_delivered: "RTO DELIVERED",
+  out_for_delivery: "OUT FOR DELIVERY",
+  in_transit: "IN TRANSIT",
+  out_for_pickup: "OUT FOR PICKUP",
+};
+
 const LeadStatuses = {
   new: "NEW",
   calling: "CALLING",
@@ -101,6 +113,7 @@ module.exports = {
   domain,
   txn_purpose,
   activity_status: ActivityStatus,
+  shiprocket_status: ShiprocketStatus,
   notify_type: NotificationType,
   lead_status: LeadStatuses,
 };

@@ -47,6 +47,21 @@
     },
     "token": {
       "type": "text"
+    },
+    "selected_payment_gateway": {
+      "type": "enumeration",
+      "enum": [
+        "RAZORPAY",
+        "CASHFREE",
+        "NONE"
+      ],
+      "default": "RAZORPAY"
+    },
+    "cashfree_client_secret": {
+      "type": "string"
+    },
+    "cashfree_client_id": {
+      "type": "string"
     }
   }
 }

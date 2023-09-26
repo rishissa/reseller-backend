@@ -29,7 +29,6 @@ module.exports = (plugin) => {
             //   user: userInfo.id,
             //   description: `Admin Logged In`,
             // };
-
             // const activity = createActivity(activity_data, strapi);
           }
         }
@@ -224,18 +223,23 @@ module.exports = (plugin) => {
 
       var tag = ctx.request.query.role;
 
+      var tagsArr;
+      // console.log(tag.split(","));
       const roles = await strapi.db
         .query("plugin::users-permissions.role")
         .findMany({ select: ["id", "name"] });
 
       if (!tag) {
-        tag = roles.map((r) => r.id);
+        tagsArr = roles.map((r) => r.name);
       } else {
-        tag = roles.filter((r) => {
-          return r.name.toLowerCase() === tag.toLowerCase() ? r.id : "";
-        });
+        let tags = tag.split(",");
+        const modifiedTags = tags.map((tag) => tag.toLowerCase());
+        const matchedRoles = roles.filter((role) =>
+          modifiedTags.includes(role.name.toLowerCase())
+        );
 
-        tag = tag[0].id;
+        tagsArr = matchedRoles.map((role) => role.name);
+        // tag = tag[0].id;
       }
 
       var data;
@@ -244,7 +248,7 @@ module.exports = (plugin) => {
         const users = await strapi
           .query("plugin::users-permissions.user")
           .findWithCount({
-            where: { role: { id: { $in: tag } } },
+            where: { role: { name: { $in: tagsArr } } },
             select: [
               "id",
               "username",
