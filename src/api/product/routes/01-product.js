@@ -74,7 +74,7 @@ module.exports = {
       handler: "product.findAllProducts",
       config: {
         policies: [],
-        middlewares: [],
+        middlewares: ["api::product.product-filters"],
       },
     },
   ],

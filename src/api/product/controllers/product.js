@@ -27,8 +27,13 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       const variants = ctx.request.body.data.variants;
       ctx.request.body.data.slug = genProdSlug(ctx.request.body.data.name);
 
-      const response = await super.create(ctx);
-      console.log(response);
+      var response;
+      try {
+        response = await super.create(ctx);
+      } catch (err) {
+        return ctx.send(err, 400);
+      }
+      // const response = await super.create(ctx);
       //create variant
       var newVariants = [];
       // console.log(variants[0].bulk_pricings);
@@ -76,7 +81,6 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         newVariants.push(newVariant);
       }
       response.data["variants"] = newVariants;
-
       //create activity
       let activity_data = {
         event: activity_status.new_product,
@@ -147,7 +151,9 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
 
   async findAllProducts(ctx, next) {
     try {
-      const pagination = ctx.request.query;
+      const pagination = ctx.request.query.pagination;
+      const filters = ctx.request.filters;
+      const sort = ctx.request.sort;
 
       var meta;
       var products;
@@ -156,8 +162,8 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         const products = await strapi.db
           .query("api::product.product")
           .findWithCount({
-            where: { isActive: true },
-            orderBy: { id: "asc" },
+            orderBy: sort,
+            where: { $and: filters },
             offset: offset,
             limit: limit,
             populate: {
@@ -165,27 +171,30 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
               gallery: true,
               category: true,
               product_variants: true,
+              product_metric: true,
             },
           });
         return products;
       };
 
-      if (Object.keys(pagination).length > 0) {
-        const { limit, offset } = getPagination(
-          pagination.pagination.page,
-          pagination.pagination.size
-        );
-        products = await getProducts(offset, limit);
-        meta = {
-          pagination: {
-            page: pagination.pagination.page
-              ? parseInt(pagination.pagination.page)
-              : 1,
-            pageSize: parseInt(pagination.pagination.size),
-            pageCount: Math.ceil(products[1] / limit),
-            total: products[1],
-          },
-        };
+      if (pagination) {
+        if (Object.keys(pagination).length > 0) {
+          const { limit, offset } = getPagination(
+            pagination.page,
+            pagination.size
+          );
+          products = await getProducts(offset, limit);
+          meta = {
+            pagination: {
+              page: pagination.page ? parseInt(pagination.page) : 1,
+              pageSize: pagination.size
+                ? parseInt(pagination.size)
+                : products[1],
+              pageCount: Math.ceil(products[1] / limit),
+              total: products[1],
+            },
+          };
+        }
       } else {
         products = await getProducts(null, null);
         meta = {
@@ -215,7 +224,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
           fields: ["name", "slug", "id", "desc"],
           populate: {
             gallery: true,
-            product_variants: true,
+            product_variants: { populate: { bulk_pricings: true } },
             category: true,
             collection: true,
             thumbnail: true,
@@ -397,6 +406,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
           populate: {
             thumbnail: true,
             product_variants: true,
+            product_metric: true,
           },
         });
       } else {
@@ -415,6 +425,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
           populate: {
             thumbnail: true,
             product_variants: true,
+            product_metric: true,
           },
         });
       }

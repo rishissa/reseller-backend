@@ -1,6 +1,6 @@
 "use strict";
 const admin = require("firebase-admin");
-const serviceAccount = require("../config/resell-demo-otpauth-firebase-adminsdk-vys9k-5e6f672759.json");
+const serviceAccount = require("../config/vdc-app-ssa-firebase.json");
 
 module.exports = {
   /**

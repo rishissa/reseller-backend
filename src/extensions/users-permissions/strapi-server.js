@@ -96,7 +96,7 @@ module.exports = (plugin) => {
     const password = Math.floor(Math.random() * 90000000) + 10000000;
     // console.log(password)
     body["confirmed"] = false;
-    body["role"] = ["6"];
+    body["role"] = ["3"];
     body["phone"] = `+91${phone}`;
     let hashPass = await bcrypt.hash(password.toString(), 10);
     if (body.password) {
@@ -171,10 +171,18 @@ module.exports = (plugin) => {
 
       var tag = ctx.request.query.role;
 
+      const roles = await strapi.db
+        .query("plugin::users-permissions.role")
+        .findMany({ select: ["id", "name"] });
+
       if (!tag) {
-        tag = [7, 6, 9, 8];
+        tag = roles.map((r) => r.id);
       } else {
-        tag = [tag];
+        tag = roles.filter((r) => {
+          return r.name.toLowerCase() === tag.toLowerCase() ? r.id : "";
+        });
+
+        tag = tag[0].id;
       }
 
       var data;
@@ -208,6 +216,7 @@ module.exports = (plugin) => {
               wallets: true,
               transactions: true,
               subscriptions: true,
+              metric: true,
             },
           });
         return users;

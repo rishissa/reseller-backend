@@ -4,8 +4,13 @@
 
 const { createCoreController } = require("@strapi/strapi").factories;
 
-const { activity_status } = require("../../../../config/constants");
+const {
+  activity_status,
+  notify_type,
+} = require("../../../../config/constants");
 const { createActivity } = require("../../utils/Helpers");
+const { fcmNotify } = require("../../utils/fcmNotify");
+
 const { tz_reasons, tz_types } = require("../../utils/WalletConstants");
 
 module.exports = createCoreController("api::wallet.wallet", ({ strapi }) => ({
@@ -92,6 +97,28 @@ module.exports = createCoreController("api::wallet.wallet", ({ strapi }) => ({
 
         const activity = createActivity(activity_data, strapi);
       }
+
+      const fcmData = {
+        title: `🪙Wallet ${transaction_type}ED Amount ${amount}`,
+        body: `Your Wallet has been ${transaction_type}ED with ₹${amount}`,
+        description: `Your Wallet has been ${transaction_type}ED with ₹${amount}`,
+        type: notify_type.transaction,
+        data: `${add.id}`,
+        users_permissions_user: users_permissions_user,
+        targetType: "token",
+        targetValue: userInfo.fcmToken,
+      };
+      //create notification entry
+
+      const notification = await strapi.db
+        .query("api::notification.notification")
+        .create({ data: fcmData });
+
+      const sendNotification = await fcmNotify(
+        fcmData,
+        userInfo.fcmToken,
+        notification.id
+      );
 
       return ctx.send(add, 200);
     } catch (err) {

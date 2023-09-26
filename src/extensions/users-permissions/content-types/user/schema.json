@@ -187,6 +187,12 @@
       "relation": "oneToMany",
       "target": "api::lead.lead",
       "mappedBy": "user"
+    },
+    "metric": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::user-metric.user-metric",
+      "inversedBy": "user"
     }
   }
 }

@@ -28,11 +28,13 @@
     "nodemailer": "^6.8.0",
     "nodemon": "^2.0.20",
     "pg": "^8.8.0",
+    "pm2": "^5.3.0",
     "puppeteer": "^20.7.2",
     "razorpay": "^2.8.3",
     "strapi-plugin-custom-links": "^0.2.1",
     "strapi-plugin-fcm": "^1.0.7",
-    "strapi-plugin-random-sort": "^0.0.3"
+    "strapi-plugin-random-sort": "^0.0.3",
+    "xlsx": "^0.18.5"
   },
   "author": {
     "name": "Ronak Thakkar"

@@ -39,6 +39,7 @@
         "INTRANSIT",
         "OUT_FOR_DELIVERY",
         "DELIVERED",
+        "CANCELLED",
         "COMPLETED",
         "PAYOUT_DONE",
         "RTO",
@@ -63,6 +64,12 @@
       "relation": "oneToOne",
       "target": "api::custom-courier.custom-courier",
       "mappedBy": "order_product"
+    },
+    "shiprocket_order_item": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::shiprocket-order-item.shiprocket-order-item",
+      "mappedBy": "order_item"
     }
   }
 }

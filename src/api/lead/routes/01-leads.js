@@ -9,5 +9,23 @@ module.exports = {
         middlewares: ["api::lead.lead-body-validation"], //query validator
       },
     },
+    {
+      method: "PUT",
+      path: "/leads/:id/assign",
+      handler: "lead.assignLead",
+      config: {
+        policies: [],
+        middlewares: [], //query validator
+      },
+    },
+    {
+      method: "GET",
+      path: "/leads/search",
+      handler: "lead.searchLeads",
+      config: {
+        policies: [],
+        middlewares: [], //query validator
+      },
+    },
   ],
 };

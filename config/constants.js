@@ -1,4 +1,4 @@
-const domain = "https://api.hangs.in";
+const domain = "https://api.thevdc.in";
 const baseURL = domain + "/api";
 
 const PaymentStatus = {

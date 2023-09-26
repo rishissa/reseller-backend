@@ -24,6 +24,9 @@ const Razorpay = require("razorpay");
 const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
 const { fcmNotify } = require("../../utils/fcmNotify");
 
+const { userMetrics } = require("../../utils/userMetrics");
+const { productMetrics } = require("../../utils/productMetrics");
+
 const { getPagination } = require("../../utils/Pagination");
 
 var longTime;
@@ -149,6 +152,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               id: id,
             },
           });
+
         if (userInfo.isAdmin) {
           user_id = ctx.request.body.user_id;
           userAdmin = await strapi
@@ -163,7 +167,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         userInfo,
         arrayOfProds
       );
-      // console.log(totalAmount);
 
       // console.log(userInfo);
       var globalVar = await strapi.entityService.findMany("api::global.global");
@@ -202,40 +205,48 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       if (payment_mode === "COD") {
         if (plan === null) {
           totalAmount =
-            parseFloat(globalVar.codPrepaidAmount) +
-            parseFloat(globalVar.shippingPrice);
+            parseFloat(globalVar.codPrepaidAmount || 0) +
+            parseFloat(globalVar.shippingPrice || 0);
           totalAmount = commission(totalAmount);
         }
 
         if (plan) {
-          if (plan.codAllowed === true) {
-            if (plan.codPrice === null || plan.codPrice === 0) {
+          if (plan.name === "Free") {
+            if (plan.codAllowed === true) {
               totalAmount =
-                parseFloat(globalVar.codPrepaidAmount) +
-                parseFloat(globalVar.shippingPrice);
+                parseFloat(globalVar.codPrepaidAmount || 0) +
+                parseFloat(globalVar.shippingPrice || 0);
               totalAmount = commission(totalAmount);
             } else {
-              totalAmount =
-                parseFloat(plan.codPrice) + parseFloat(globalVar.shippingPrice);
-              totalAmount = commission(totalAmount);
+              return ctx.send(
+                { message: `COD is not allowed in ${plan.name} plan` },
+                400
+              );
             }
           } else {
-            return ctx.send(
-              { message: `COD is not allowed in ${plan.name} plan` },
-              400
-            );
+            if (plan.codAllowed === true) {
+              totalAmount =
+                parseFloat(globalVar.codPrepaidAmount || 0) +
+                parseFloat(globalVar.shippingPrice || 0);
+              totalAmount = commission(totalAmount);
+            } else {
+              return ctx.send(
+                { message: `COD is not allowed in ${plan.name} plan` },
+                400
+              );
+            }
           }
         }
       }
 
       if (payment_mode === "PREPAID") {
         if (plan === null) {
-          totalAmount += parseFloat(globalVar.shippingPrice);
+          totalAmount += parseFloat(globalVar.shippingPrice || 0);
           totalAmount = commission(totalAmount);
         }
         if (plan) {
           if (plan.prepaidAllowed === true) {
-            totalAmount += parseFloat(globalVar.shippingPrice);
+            totalAmount += parseFloat(globalVar.shippingPrice || 0);
             totalAmount = commission(totalAmount);
           } else {
             return ctx.send(
@@ -297,7 +308,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             },
           },
         });
-        totalAmount += parseFloat(globalVar.shippingPrice);
+        totalAmount += parseFloat(globalVar.shippingPrice || 0);
 
         const wallet = await strapi.db.query("api::wallet.wallet").create({
           data: {
@@ -317,6 +328,38 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             where: { id: userInfo.id },
           });
 
+        let metricData = {
+          id: userInfo.id,
+          field: "wallet_orders",
+        };
+        //
+        const user_metrics = await userMetrics(strapi, metricData);
+
+        let metricProductData = {
+          // id: userInfo.id,
+          field: "ordered_count",
+          products_variants: arrayOfProds,
+        };
+        const prod_metrics = await productMetrics(strapi, metricProductData);
+        //create activity
+        let metricProductData2 = {
+          // id: userInfo.id,
+          field: "revenue_generated",
+          ordered_products: orderProducts,
+        };
+        const prod_metrics_revenue = await productMetrics(
+          strapi,
+          metricProductData2
+        );
+        let metricProductData3 = {
+          // id: userInfo.id,
+          field: "premium_plan_orders",
+          products_variants: order_data.order_products,
+        };
+        const prod_metrics_revenue2 = await productMetrics(
+          strapi,
+          metricProductData3
+        );
         //create activity
         let activity_data = {
           event: activity_status.order_placed,
@@ -446,7 +489,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
     const crypto = require("crypto");
 
     var products = [];
-
+    var productVar = [];
     var globalVar = await strapi.entityService.findMany("api::global.global");
     var totalAmount = 0;
 
@@ -488,7 +531,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         },
       });
       // return order;
-      console.log(order);
+      // console.log(order);
       var secret = globalVar.razorpaySecret;
       var key = globalVar.razorpayKey;
 
@@ -538,8 +581,46 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               },
             });
           products.push(order.order_products[i].product_variant.name);
+          productVar.push(order.order_products[i].product_variant);
         }
 
+        //create metrics
+        let metricData = {
+          id: order.users_permissions_user.id,
+          field:
+            order.payment_mode === payment_methods.cod
+              ? "cod_orders"
+              : "prepaid_orders",
+        };
+
+        const user_metrics = await userMetrics(strapi, metricData);
+
+        //product metrics
+        let metricProductData = {
+          // id: userInfo.id,
+          field: "ordered_count",
+          products_variants: productVar,
+        };
+        const prod_metrics = await productMetrics(strapi, metricProductData);
+        //create activity
+        let metricProductData2 = {
+          // id: userInfo.id,
+          field: "revenue_generated",
+          ordered_products: order.order_products,
+        };
+        const prod_metrics_revenue = await productMetrics(
+          strapi,
+          metricProductData2
+        );
+        let metricProductData3 = {
+          // id: userInfo.id,
+          field: "premium_plan_orders",
+          products_variants: order.order_products,
+        };
+        const prod_metrics_revenue2 = await productMetrics(
+          strapi,
+          metricProductData3
+        );
         //create entry in txn table
         const txn_id = await generateTransactionId();
         const txnTable = await strapi.db
@@ -580,7 +661,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         };
 
         const activity = createActivity(activity_data, strapi);
-
+        console.log(products);
         const fcmData = {
           title: "Order Placed",
           body: `Your Order has been placed successfully`,
@@ -687,8 +768,8 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         const activity = createActivity(activity_data, strapi);
 
         const fcmData = {
-          title: "Order Accepted",
-          body: `Your Order has been accepted successfully`,
+          title: "✅Order Accepted",
+          body: `Your Order for ${orderDetails.product_variant.product.name} ${orderDetails.product_variant.name} has been Accepted!!`,
           image: orderDetails.product_variant.product.thumbnail.id,
           description: `Your Order for ${orderDetails.product_variant.name} has been acceped successfully`,
           type: notify_type.order,
@@ -758,7 +839,10 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             },
           },
         });
-      if (order.order.payment_mode === "PREPAID") {
+      if (
+        order.order.payment_mode === payment_methods.prepaid ||
+        order.order.payment_mode === payment_methods.wallet
+      ) {
         // for (let i = 0; i < order.order_products.length; i++) {
         totalAmount = parseFloat(order.order_price);
         // }
@@ -766,6 +850,8 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       } else {
         totalAmount += globalVar.codPrepaidAmount;
       }
+
+      console.log(totalAmount);
       const date = new Date(); // Get the current date
       const dateString = date.toDateString();
       const [dayOfWeek, month, day, year] = dateString.split(" ");
@@ -780,10 +866,11 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         const addRefundtoWallet = await strapi
           .query("plugin::users-permissions.user")
           .update({
-            where: { id: id },
+            where: { id: order.order.users_permissions_user.id },
             data: {
               wallet_balance:
-                (userInfo.wallet_balance || 0) + parseFloat(totalAmount),
+                (order.order.users_permissions_user.wallet_balance || 0) +
+                parseFloat(totalAmount),
             },
           });
 
@@ -792,7 +879,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           .update({
             where: { id: order_id },
             data: {
-              status: "DECLINED",
+              status: order_status.declined,
             },
           });
 
@@ -801,7 +888,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             amount: totalAmount,
             transaction_type: tz_types.debit,
             reasons: tz_reasons.payout_sent,
-            users_permissions_user: userInfo.id,
+            users_permissions_user: order.order.users_permissions_user.id,
             order: order.order.id,
           },
         });
@@ -830,8 +917,8 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
         //send notification
         const fcmData = {
-          title: "Order Rejected",
-          body: `Your Order has been Rejected`,
+          title: "❌Order Rejected",
+          body: `Your Order for ${order.product_variant.product.name} ${order.product_variant.name} has been Rejected`,
           image: order.product_variant.product.thumbnail.id,
           description: `Your Order for ${order.product_variant.name} has been rejected`,
           type: notify_type.order,
@@ -841,14 +928,37 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           targetValue: order.order.users_permissions_user.fcmToken,
         };
         //create notification entry
-        const notification = await strapi.db
+        const fcmData2 = {
+          title: `🪙Wallet Refund Processed`,
+          body: `Your Wallet has been debited with ₹${totalAmount} for ${order.product_variant.product.name}`,
+          image: order.product_variant.product.thumbnail.id,
+          description: `Your Wallet has been debited with ₹${totalAmount} for ${order.product_variant.product.name}`,
+          type: notify_type.transaction,
+          data: `${order.id}`,
+          users_permissions_user: order.order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: order.order.users_permissions_user.fcmToken,
+        };
+        //create notification entry
+
+        const notification1 = await strapi.db
           .query("api::notification.notification")
           .create({ data: fcmData });
+        const notification2 = await strapi.db
+          .query("api::notification.notification")
+          .create({ data: fcmData2 });
+
         const sendNotification = await fcmNotify(
           fcmData,
           order.order.users_permissions_user.fcmToken,
-          notification.id
+          notification1.id
         );
+        const sendNotificationWallet = await fcmNotify(
+          fcmData2,
+          order.order.users_permissions_user.fcmToken,
+          notification2.id
+        );
+
         return ctx.send({ message: "Order Declined!!" }, 201);
       } else {
         return { message: "Order Already Rejected!!" };

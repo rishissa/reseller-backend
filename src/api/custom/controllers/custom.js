@@ -35,14 +35,14 @@ const {
 } = require("../../utils/StatsHelper");
 const { domain } = require("../../../../config/constants");
 const { faker } = require("@faker-js/faker");
-const serviceAccount = require("../../../../config/resell-demo-otpauth-firebase-adminsdk-vys9k-5e6f672759.json");
+const serviceAccount = require("../../../../config/vdc-app-ssa-firebase.json");
 const admin = require("firebase-admin");
 const { createActivity } = require("../../utils/Helpers");
-const razorpayService = require("../services/razorpay");
+const { razorpayService } = require("../services/razorpay");
 const { commissionAmount } = require("../../utils/RzpXCommissio");
 const { tz_reasons, tz_types } = require("../../utils/WalletConstants");
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
-
+const { getPaymentData } = require("../services/razorpay");
 var browser = null;
 /*
  * A set of functions called "actions" for `custom`
@@ -75,98 +75,77 @@ var longTime;
 
 module.exports = {
   webHook: async (ctx, next) => {
-    console.log(JSON.stringify(ctx.request.body));
+    // console.log(JSON.stringify(ctx.request.body));
+    console.log(ctx.request.body);
     try {
       var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
+
       var paymentCaptured =
         paymentDetails.event === "payment.captured" ? true : false;
       let event = paymentDetails.event;
       let payment_method_rzp = paymentDetails.payload.payment.entity.method;
+      console.log("payment_method_rzp", payment_method_rzp);
       const secret = "razor@123";
       console.log("Inside WebHooks");
+      // decryptions
       const shasum = crypto.createHmac("sha256", secret);
       shasum.update(JSON.stringify(ctx.request.body));
       const digest = shasum.digest("hex");
-      const rzpOrder = JSON.stringify(ctx.request.body);
+
+      // razirpay order body
+      const rzpOrder = ctx.request.body;
 
       if (digest === ctx.request.headers["x-razorpay-signature"]) {
-        const order = await strapi.db
-          .query("api::order-product.order-product")
-          .findOne({
-            where: {
-              rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
-            },
-          });
+        let order;
+        let type;
+        const getOrder = await strapi.db.query("api::order.order").findOne({
+          where: {
+            rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
+          },
+          select: ["*"],
+        });
+        if (getOrder) {
+          order = getOrder;
+          type = "order";
+        } else {
+          const getSubs = await strapi.db
+            .query("api::subscription.subscription")
+            .findOne({
+              where: {
+                orderId: paymentDetails.payload.payment.entity.order_id,
+              },
+            });
+          order = getSubs;
+          type = "subs";
+        }
+
+        if (order === null) return ctx.send({ error: "Invalid Request" }, 400);
 
         var entryPaymentLog;
-        var paymentData;
-        if (payment_method_rzp === payment_method.UPI) {
-          paymentData = {
-            rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
-            rzpaymentId: paymentDetails.payload.payment.entity.id,
-            amount: paymentDetails.payload.payment.entity.amount / 100,
-            email: paymentDetails.payload.payment.entity.email,
-            contact: paymentDetails.payload.payment.entity.contact,
-            currency: paymentDetails.payload.payment.entity.currency,
-            status: paymentDetails.payload.payment.entity.status.toUpperCase(),
-            method: payment_method_rzp,
-            vpa: paymentDetails.payload.payment.entity.vpa,
-            order: [order.id],
-          };
-        }
-        if (payment_method_rzp === payment_method.NET_BANKING) {
-          paymentData = {
-            rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
-            rzpaymentId: paymentDetails.payload.payment.entity.id,
-            amount: paymentDetails.payload.payment.entity.amount / 100,
-            email: paymentDetails.payload.payment.entity.email,
-            contact: paymentDetails.payload.payment.entity.contact,
-            currency: paymentDetails.payload.payment.entity.currency,
-            status: paymentDetails.payload.payment.entity.status.toUpperCase(),
-            method: payment_method_rzp,
-            bank: paymentDetails.payload.payment.entity.bank,
-            order: [order.id],
-          };
-        } else {
-          paymentData = {
-            rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
-            rzpaymentId: paymentDetails.payload.payment.entity.id,
-            amount: paymentDetails.payload.payment.entity.amount / 100,
-            email: paymentDetails.payload.payment.entity.email,
-            contact: paymentDetails.payload.payment.entity.contact,
-            currency: paymentDetails.payload.payment.entity.currency,
-            status: paymentDetails.payload.payment.entity.status.toUpperCase(),
-            method: payment_method_rzp,
-            cardId: paymentDetails.payload.payment.entity.card_id,
-            cardNumber:
-              "**** **** **** " +
-              paymentDetails.payload.payment.entity.card.last4,
-            cardType: paymentDetails.payload.payment.entity.card.type,
-            cardNetwork: paymentDetails.payload.payment.entity.card.network,
-            order: [order.id],
-          };
-        }
+        var paymentData = await getPaymentData({ paymentDetails, order, type });
+
         switch (event) {
           case "payment.authorized":
             console.log("Payment Authorized", event);
-            console.log(order);
-            paymentData.status = PaymentStatus.captured;
-            entryPaymentLog = await strapi.entityService.create(
-              "api::payment-log.payment-log",
-              {
+            paymentData.status = PaymentStatus.authorized;
+            entryPaymentLog = await strapi.db
+              .query("api::payment-log.payment-log")
+              .create({
                 data: paymentData,
-              }
-            );
+              });
             break;
           case "payment.captured":
             console.log("Payment Captured", event);
             if (order.isPaid === false) {
-              console.log(entryPaymentLog);
-              const entry = await strapi.db
-                .query("api::order-product.order-product")
-                .update({
+              if (type === "order") {
+                const entry = await strapi.db.query("api::order.order").update({
                   where: {
-                    rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
+                    $and: [
+                      {
+                        rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
+                      },
+                      { isPaid: false },
+                    ],
                   },
                   data: {
                     isPaid: true,
@@ -175,48 +154,35 @@ module.exports = {
                       ctx.request.headers["x-razorpay-signature"],
                   },
                 });
+              }
+
+              paymentData.status = PaymentStatus.captured;
+              entryPaymentLog = await strapi.db
+                .query("api::payment-log.payment-log")
+                .create({
+                  data: paymentData,
+                });
             }
-            //role based operations
-            //firebase otp verification
-            //email templating
-            //webhook complete testing
             break;
           case "payment.failed":
-            const entryPaymentFailed = await strapi.entityService.create(
-              "api::payment-log.payment-log",
-              {
+            paymentData.status = PaymentStatus.failed;
+            const entryPaymentFailed = await strapi.db
+              .query("api::payment-log.payment-log")
+              .create({
                 data: paymentData,
-              }
-            );
+              });
             console.log("Payment Failed", event);
             break;
           default:
             break;
         }
+        return ctx.send({ message: "Webhooks executed Successfully" }, 200);
       } else {
-        ctx.send(
-          {
-            message: "Request is Not Legit",
-          },
-          400
-        );
+        ctx.send({ message: "Request is Not Legit" }, 400);
       }
-      ctx.send(
-        {
-          message: "Webhooks executed Successfully",
-        },
-        200
-      );
     } catch (err) {
-      // else {
-      ctx.send(
-        {
-          message: "Request is Not Legit",
-        },
-        500
-      );
-      // }
-      // return err;
+      console.log(err);
+      ctx.send({ message: "Request is Not Legit" }, 500);
     }
   },
 
@@ -629,6 +595,7 @@ module.exports = {
   firebasePhoneAuthVerify: async (ctx, next) => {
     try {
       console.log("Inside firebase Auth");
+      console.log(ctx.request.body);
       try {
         const idToken = await admin
           .auth()

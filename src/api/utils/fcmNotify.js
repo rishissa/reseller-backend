@@ -17,14 +17,14 @@ const fcmNotify = async (data, token, id) => {
       data: {
         title: data.title,
         body: data.body,
-        image: `${domain}${notification.image.url}`,
+        image: notification.image ? `${domain}${notification.image.url}` : "",
         // message: "Hello, how are you?",
       },
       // token: token,
     };
     message[data.targetType] = data.targetValue;
     const response = await firebase.messaging().send(message);
-    console.log(response);
+    // console.log(response);
     return response;
   } catch (err) {
     console.log(err);

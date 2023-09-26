@@ -13,25 +13,11 @@
   "pluginOptions": {},
   "attributes": {
     "pincode": {
-      "type": "string"
-    },
-    "city": {
-      "type": "string"
-    },
-    "district": {
-      "type": "string"
-    },
-    "state": {
-      "type": "string"
-    },
-    "postalDivision": {
-      "type": "string"
-    },
-    "postalRegion": {
-      "type": "string"
-    },
-    "country": {
-      "type": "string"
+      "type": "string",
+      "required": true,
+      "maxLength": 6,
+      "minLength": 6,
+      "unique": true
     }
   }
 }

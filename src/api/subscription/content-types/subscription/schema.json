@@ -38,6 +38,15 @@
       "relation": "manyToOne",
       "target": "api::plan.plan",
       "inversedBy": "subscriptions"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "payment_logs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment-log.payment-log",
+      "mappedBy": "subscription"
     }
   }
 }
