@@ -45,10 +45,11 @@ module.exports = (config, { strapi }) => {
         },
       });
 
+    // console.log(order_product);
     const addressDetails = await strapi.db
       .query("api::address.address")
       .findOne({ where: { id: address } });
-
+    // console.log(addressDetails);
     if (!addressDetails) {
       return ctx.send({ message: `No Address found with the given id` }, 400);
     }

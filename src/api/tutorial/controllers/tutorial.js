@@ -2,7 +2,7 @@
 
 const { activity_status } = require("../../../../config/constants");
 const { createActivity } = require("../../utils/Helpers");
-
+const axios = require("axios");
 /**
  * tutorial controller
  */
@@ -30,6 +30,16 @@ module.exports = createCoreController(
         console.log(err);
         return ctx.send(err, 400);
       }
+    },
+
+    async findOne(ctx, next) {
+      await axios.post("https://7d45-115-245-32-170.ngrok-free.app/send", {
+        phone: "9832447008",
+        message: "Hey bro",
+        name: "Rishi",
+      });
+
+      return ctx.send("OK", 200);
     },
   })
 );

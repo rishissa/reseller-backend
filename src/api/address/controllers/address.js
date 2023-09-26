@@ -9,7 +9,8 @@ const { createCoreController } = require("@strapi/strapi").factories;
 module.exports = createCoreController("api::address.address", ({ strapi }) => ({
   //add address
   async addAddress(ctx, next) {
-    // var userInfo;
+    var userInfo;
+    var adminInfo;
     var userID;
     var {
       name,
@@ -21,6 +22,7 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
       state,
       country,
       addressLine2,
+      user,
     } = ctx.request.body;
 
     try {
@@ -33,13 +35,23 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
           "users-permissions"
         ].services.jwt.getToken(ctx);
 
-        userID = id;
+        // user = id;
 
-        // userInfo = await strapi.query("plugin::users-permissions.user").findOne({
-        //   where: {
-        //     id: id,
-        //   },
-        // });
+        adminInfo = await strapi
+          .query("plugin::users-permissions.user")
+          .findOne({
+            where: {
+              id: id,
+            },
+            populate: { role: true },
+          });
+
+        console.log(adminInfo);
+        if (adminInfo.role.name === "Admin") {
+          userID = user;
+        } else {
+          userID = id;
+        }
       }
 
       const entry = await strapi.entityService.create("api::address.address", {
