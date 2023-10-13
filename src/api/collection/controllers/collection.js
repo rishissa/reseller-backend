@@ -2,6 +2,7 @@
 
 const { activity_status } = require("../../../../config/constants");
 const { createActivity } = require("../../utils/Helpers");
+const { getPagination } = require("../../utils/Pagination");
 
 /**
  * collection controller
@@ -90,9 +91,10 @@ module.exports = createCoreController(
           allCollections = await getCollection(offset, limit);
           meta = {
             pagination: {
-              page: pagination.pagination.page
-                ? parseInt(pagination.pagination.page)
-                : 1,
+              page:
+                parseInt(pagination.pagination.page) < 1
+                  ? 1
+                  : parseInt(pagination.pagination.page),
               pageSize: limit,
               pageCount: Math.ceil(allCollections.length / limit),
               total: allCollections.length,
@@ -111,6 +113,7 @@ module.exports = createCoreController(
         }
         return ctx.send({ data: allCollections, meta }, 200);
       } catch (err) {
+        console.log(err);
         return ctx.send(err, 400);
       }
     },

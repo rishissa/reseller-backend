@@ -26,8 +26,15 @@ const uid = () => {
   return orderID;
 };
 
+const shippingPriceCalculation = (amount, per) => {
+  const percentage = per;
+  const totalAmount = amount + (amount * percentage) / 100;
+  return parseFloat((totalAmount - amount).toFixed(2));
+};
+
 module.exports = {
   commission: addCommission,
   createActivity,
   generateOrderUid: uid,
+  shippingPriceCalculation,
 };

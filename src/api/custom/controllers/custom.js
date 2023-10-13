@@ -42,6 +42,8 @@ const { razorpayService } = require("../services/razorpay");
 const { commissionAmount } = require("../../utils/RzpXCommissio");
 const { tz_reasons, tz_types } = require("../../utils/WalletConstants");
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
+const { pdf_generator } = require("../../utils/PdfGeneratorHelper");
+
 const { getPaymentData } = require("../services/razorpay");
 var browser = null;
 /*
@@ -205,6 +207,7 @@ module.exports = {
               "isActive",
             ],
             populate: {
+              bulk_pricings: true,
               product: {
                 populate: {
                   thumbnail: true,
@@ -610,7 +613,14 @@ module.exports = {
             .query("plugin::users-permissions.user")
             .findOne({
               where: {
-                phone: phoneNumber,
+                $or: [
+                  {
+                    phone: phoneNumber,
+                  },
+                  {
+                    phone: phoneNumber.slice(-10),
+                  },
+                ],
               },
             });
           if (user) {
@@ -783,8 +793,8 @@ module.exports = {
 
       console.log("BROWSER STARTING: " + new Date().getTime());
 
-      console.log(browser);
-
+      const outputPath = path.join(__dirname, `../../../../../pdfs/file.pdf`);
+      // const page = await pdf_generator(url);
       if (browser == null) {
         browser = await puppeteer.launch({
           headless: "new",
@@ -844,8 +854,6 @@ module.exports = {
       await page.waitForSelector("#root", { visible: true });
 
       console.log("PDF STARTED: " + new Date().getTime());
-      let date = `cat_${new Date().getTime()}`;
-      const outputPath = path.join(__dirname, `../../../../../pdfs/file.pdf`);
       const pdf = await page.pdf({
         // path: `../../../../../pdfs/${date}.pdf`,
         // path: `../../../../../pdfs/${date}.pdf`,
@@ -869,6 +877,112 @@ module.exports = {
         // return ctx.send(pdf, 200);
       }
       // await browser.close();
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  generateOrderDetailsPdfCatalogue: async (ctx, next) => {
+    const path = require("path");
+    try {
+      const parts = ctx.request.params.id.split("_");
+      const ids = parts.filter((n) => n).join("_");
+      const regex = /^[\w_]+$/;
+      if (regex.test(ids) === false) {
+        return ctx.send(
+          { message: "IDs with only underscores is allowed" },
+          400
+        );
+      }
+      const url = `${admin_url}/pdf-maker/${ids}/${phone}`;
+      console.log(url);
+
+      console.log("BROWSER STARTING: " + new Date().getTime());
+
+      console.log(browser);
+
+      const outputPath = path.join(__dirname, `../../../../../files/file.pdf`);
+      if (browser == null) {
+        browser = await puppeteer.launch({
+          headless: "new",
+          // userDataDir: "../../../chromium_instances",
+          args: [
+            "--disable-features=IsolateOrigins",
+            "--disable-site-isolation-trials",
+            "--autoplay-policy=user-gesture-required",
+            "--disable-background-networking",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-breakpad",
+            "--disable-client-side-phishing-detection",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--disable-dev-shm-usage",
+            "--disable-domain-reliability",
+            "--disable-extensions",
+            "--disable-features=AudioServiceOutOfProcess",
+            "--disable-hang-monitor",
+            "--disable-ipc-flooding-protection",
+            "--disable-notifications",
+            "--disable-offer-store-unmasked-wallet-cards",
+            "--disable-popup-blocking",
+            "--disable-print-preview",
+            "--disable-prompt-on-repost",
+            "--disable-renderer-backgrounding",
+            "--disable-setuid-sandbox",
+            "--disable-speech-api",
+            "--disable-sync",
+            "--hide-scrollbars",
+            "--ignore-gpu-blacklist",
+            "--metrics-recording-only",
+            "--mute-audio",
+            // "--no-default-browser-check",
+            "--no-first-run",
+            "--no-pings",
+            "--no-sandbox",
+            "--no-zygote",
+            "--password-store=basic",
+            "--use-gl=swiftshader",
+            "--use-mock-keychain",
+          ],
+        });
+      }
+
+      // Create a new page
+      console.log("BROWSER STARTED: " + new Date().getTime());
+
+      const page = await browser.newPage();
+      await page.goto(url, {
+        waitUntil: "networkidle0",
+      });
+      console.log("PAGE OPENED: " + new Date().getTime());
+      await page.emulateMediaType("screen");
+
+      await page.waitForSelector("#root", { visible: true });
+
+      console.log("PDF STARTED: " + new Date().getTime());
+      // const page = await pdf_generator(url);
+      const pdf = await page.pdf({
+        path: outputPath,
+        margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
+        printBackground: true,
+        format: "A4",
+      });
+
+      console.log("PDF COMPLETE: " + new Date().getTime());
+      console.log(pdf);
+      if (pdf) {
+        const filePath = outputPath;
+        const filename = path.basename(filePath);
+        // const pdfBuffer = pdf;
+        logDownloadEvent(ctx);
+        ctx.attachment(filename);
+        // browser = null;
+        ctx.type = "application/octet-stream";
+        ctx.body = fs.createReadStream(filePath);
+        // return ctx.send(pdf, 200);
+      }
     } catch (err) {
       console.log(err);
       return ctx.send(err, 400);
@@ -906,6 +1020,7 @@ module.exports = {
   resellerWithdraw: async (ctx, netx) => {
     try {
       const body = ctx.request.body;
+      console.log(body);
       const { id } = await strapi.plugins[
         "users-permissions"
       ].services.jwt.getToken(ctx);
@@ -914,6 +1029,7 @@ module.exports = {
         .query("plugin::users-permissions.user")
         .findOne({ where: { id: id } });
       body["amount"] = user.wallet_balance;
+
       var globalVar = await strapi.entityService.findMany("api::global.global");
 
       // if (parseFloat(body.amount) > parseFloat(user.wallet_balance)) {

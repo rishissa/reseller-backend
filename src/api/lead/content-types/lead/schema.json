@@ -65,6 +65,9 @@
     },
     "staff_note": {
       "type": "text"
+    },
+    "quantity": {
+      "type": "integer"
     }
   }
 }

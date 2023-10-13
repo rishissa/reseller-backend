@@ -103,13 +103,6 @@
       "type": "datetime",
       "private": true
     },
-    "otp": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::otp.otp",
-      "private": true,
-      "inversedBy": "user"
-    },
     "subscriptions": {
       "type": "relation",
       "relation": "oneToMany",

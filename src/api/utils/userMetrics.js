@@ -8,6 +8,7 @@ module.exports = {
       populate: { metric: true },
     });
 
+    console.log(user);
     switch (field) {
       case "wallet_orders":
         if (user.metric === null) {

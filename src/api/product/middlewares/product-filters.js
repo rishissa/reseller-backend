@@ -35,7 +35,7 @@ module.exports = (config, { strapi }) => {
           filters.push({
             product_variants: {
               $and: [
-                { price: { $gte: key.price.min } },
+                { price: { $gte: key.price.min || 0 } },
                 { price: { $lt: key.price.max } },
               ],
             },
