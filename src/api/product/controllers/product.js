@@ -222,7 +222,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         "api::product.product",
         id,
         {
-          fields: ["name", "slug", "id", "desc"],
+          fields: ["name", "slug", "id", "desc", "yt_video_link"],
           populate: {
             gallery: true,
             product_variants: { populate: { bulk_pricings: true } },

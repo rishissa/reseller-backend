@@ -42,11 +42,12 @@
       "type": "string"
     },
     "proof": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
       "allowedTypes": [
         "images"
-      ],
-      "type": "media",
-      "multiple": false
+      ]
     },
     "order": {
       "type": "relation",

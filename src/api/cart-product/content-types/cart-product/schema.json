@@ -23,10 +23,11 @@
     "resellingPrice": {
       "type": "decimal"
     },
-    "product": {
+    "cart": {
       "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::product.product"
+      "relation": "manyToOne",
+      "target": "api::cart.cart",
+      "inversedBy": "cart_products"
     },
     "user": {
       "type": "relation",

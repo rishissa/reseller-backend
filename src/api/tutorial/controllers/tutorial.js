@@ -32,14 +32,14 @@ module.exports = createCoreController(
       }
     },
 
-    async findOne(ctx, next) {
-      await axios.post("https://7d45-115-245-32-170.ngrok-free.app/send", {
-        phone: "9832447008",
-        message: "Hey bro",
-        name: "Rishi",
-      });
+    // async findOne(ctx, next) {
+    //   await axios.post("https://7d45-115-245-32-170.ngrok-free.app/send", {
+    //     phone: "9832447008",
+    //     message: "Hey bro",
+    //     name: "Rishi",
+    //   });
 
-      return ctx.send("OK", 200);
-    },
+    //   return ctx.send("OK", 200);
+    // },
   })
 );

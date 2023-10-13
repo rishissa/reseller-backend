@@ -2,26 +2,27 @@ const { payment_methods } = require("../../../config/constants");
 const { commission } = require("./Helpers");
 module.exports = {
   genShirocketOrderBody: (data) => {
-    let sub_total = commission(
-      data.order_product.selling_price
-        ? data.order_product.selling_price
-        : data.order_product.order_price
-    );
+    let sub_total = 0;
+
+    for (const it of data.order_product) {
+      sub_total = commission(
+        it.selling_price ? it.selling_price : it.order_price
+      );
+    }
+
     sub_total += data.global.shippingPrice;
-    let order_items = [
-      {
-        name: `${data.product.name} ${data.order_product.product_variant.name}`,
-        sku: data.order.slug,
-        units: data.order_product.quantity,
-        selling_price: data.order_product.selling_price
-          ? data.order_product.selling_price
-          : data.order_product.order_price,
-        // discount: "",
-        // tax: "",
-        // hsn: 441122,
-        order_item: data.order_product.id,
-      },
-    ];
+
+    let order_items = [];
+
+    for (const it of data.order_product) {
+      order_items.push({
+        name: `${it.product_variant.product.name} ${it.product_variant.name}`,
+        sku: it.order.slug,
+        units: it.quantity,
+        selling_price: it.selling_price ? it.selling_price : it.order_price,
+        order_item: it.id,
+      });
+    }
 
     let payment_method =
       data.order.payment_mode === payment_methods.wallet

@@ -1,4 +1,4 @@
-const domain = "https://api.hangs.in";
+const domain = "https://api.sumeetonline.in";
 const baseURL = domain + "/api";
 
 const PaymentStatus = {
@@ -83,12 +83,35 @@ const NotificationType = {
   transaction: "TRANSACTION",
 };
 
+const ShiprocketStatus = {
+  new: "NEW",
+  cancelled: "CANCELLED",
+  delivered: "DELIVERED",
+  shipped: "SHIPPED",
+  rto_initiated: "RTO INITIATED",
+  rto_delivered: "RTO DELIVERED",
+  out_for_delivery: "OUT FOR DELIVERY",
+  in_transit: "IN TRANSIT",
+  out_for_pickup: "OUT FOR PICKUP",
+};
+
 const LeadStatuses = {
   new: "NEW",
   calling: "CALLING",
   called: "CALLED",
   converted: "CONVERTED",
   completed: "COMPLETED",
+};
+
+const payment_gateways = {
+  razorpay: "RAZORPAY",
+  cashfree: "CASHFREE",
+  phonepe: "PHONEPE",
+};
+
+const PhonePePaymentStatuses = {
+  payment_success: "PAYMENT_SUCCESS",
+  payment_failed: "PAYMENT_ERROR",
 };
 
 module.exports = {
@@ -101,6 +124,9 @@ module.exports = {
   domain,
   txn_purpose,
   activity_status: ActivityStatus,
+  shiprocket_status: ShiprocketStatus,
   notify_type: NotificationType,
   lead_status: LeadStatuses,
+  payment_gateways,
+  phonepe_status: PhonePePaymentStatuses,
 };
