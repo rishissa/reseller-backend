@@ -31,6 +31,15 @@ const myExtraRoutes = [
     },
   },
   {
+    method: "GET",
+    path: "/orders/selected_variants/:ids",
+    handler: "order.selectedOrders",
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
+  {
     method: "POST",
     path: "/custom/checkout",
     handler: "order.createMultipleOrders",

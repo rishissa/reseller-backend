@@ -32,7 +32,7 @@ module.exports = createCoreController(
                 cart_products: {
                   populate: {
                     product_variant: true,
-                    product: {populate: {thumbnail: true}},
+                    product: { populate: { thumbnail: true } },
                   },
                 },
               },

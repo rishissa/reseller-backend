@@ -35,7 +35,6 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
           "users-permissions"
         ].services.jwt.getToken(ctx);
 
-        // user = id;
 
         adminInfo = await strapi
           .query("plugin::users-permissions.user")
@@ -46,7 +45,7 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
             populate: { role: true },
           });
 
-        console.log(adminInfo);
+        // console.log(adminInfo);
         if (adminInfo.role.name === "Admin") {
           userID = user;
         } else {
@@ -68,7 +67,7 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
           user: userID,
         },
       });
-
+      // console.log(entry);
       return ctx.send(entry, 200);
     } catch (error) {
       console.log(error);

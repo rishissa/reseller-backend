@@ -9,8 +9,9 @@ module.exports = (config, { strapi }) => {
   // Add your own logic here.
   return async (ctx, next) => {
     strapi.log.info("In shiprocket-order-validation middleware.");
-    const order_id = ctx.request.body.order_product;
-    const address = ctx.request.body.address;
+    const order_ids = ctx.request.body.order_products;
+    console.log(order_ids);
+    // const address = ctx.request.body.address;
 
     //check if shiprocket_username and password is provided or not.
     const global = await strapi.db.query("api::global.global").findOne();
@@ -37,48 +38,65 @@ module.exports = (config, { strapi }) => {
 
     const order_product = await strapi.db
       .query("api::order-product.order-product")
-      .findOne({
-        where: { id: order_id },
+      .findMany({
+        where: { id: { $in: order_ids } },
         populate: {
           product_variant: { populate: { product: true } },
-          order: { populate: { users_permissions_user: true } },
+          order: { populate: { users_permissions_user: true, address: true } },
         },
       });
 
     // console.log(order_product);
-    const addressDetails = await strapi.db
-      .query("api::address.address")
-      .findOne({ where: { id: address } });
-    // console.log(addressDetails);
-    if (!addressDetails) {
-      return ctx.send({ message: `No Address found with the given id` }, 400);
+
+    // let missingId = null;
+
+    const missingId = order_ids.find(
+      (id) => !order_product.some((item) => item.id == id)
+    );
+
+    if (missingId !== undefined) {
+      // console.log(`ID ${missingId} doesn't have any order product.`);
+      return ctx.send(
+        { message: `ID ${missingId} doesn't have any order product.` },
+        400
+      );
     }
 
-    if (order_product.status === order_status.intransit) {
-      return ctx.send({ message: "Order already in Intransit" }, 400);
-    }
-    if (!order_product) {
+    // const addressDetails = await strapi.db
+    //   .query("api::address.address")
+    //   .findOne({ where: { id: address } });
+
+    // if (!addressDetails) {
+    //   return ctx.send({ message: `No Address found with the given id` }, 400);
+    // }
+
+    for (const it of order_product) {
+      if (!it) {
+        return ctx.send(
+          { message: `No Order Product Found with the given ID` },
+          400
+        );
+      }
+      if (it.status === order_status.intransit) {
+        return ctx.send({ message: "Order already in Intransit" }, 400);
+      }
+
+      if (
+        it.status === order_status.accepted ||
+        it.status === order_status.processing
+      ) {
+        // it["address"] = it.order.address.id;
+        ctx.request.order_product = order_product;
+        ctx.request.global = global;
+        return await next();
+      }
       return ctx.send(
-        { message: `No Order Product Found with the given ID` },
+        {
+          message: `Order ${it.id} must be ${order_status.accepted} or in ${order_status.processing} state`,
+        },
         400
       );
     }
     //check if order_product is accepted or processing
-    if (
-      order_product.status === order_status.accepted ||
-      order_product.status === order_status.processing
-    ) {
-      order_product["address"] = addressDetails;
-      ctx.request.order_product = order_product;
-      ctx.request.global = global;
-      return await next();
-    }
-
-    return ctx.send(
-      {
-        message: `Order must be ${order_status.accepted} or in ${order_status.processing} state`,
-      },
-      400
-    );
   };
 };

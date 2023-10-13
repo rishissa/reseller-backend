@@ -47,7 +47,7 @@ const {
 
 const getPaymentData = (data) => {
   var paymentData;
-  const { type, paymentDetails, order } = data
+  const { type, paymentDetails, order } = data;
 
   let payment_method_rzp = paymentDetails.payload.payment.entity.method;
 
@@ -62,8 +62,8 @@ const getPaymentData = (data) => {
       status: paymentDetails.payload.payment.entity.status.toUpperCase(),
       method: payment_method_rzp,
       vpa: paymentDetails.payload.payment.entity.vpa,
-      order: (type === "order" ? order.id : null),
-      subscription: (type === "subs" ? order.id : null),
+      order: type === "order" ? order.id : null,
+      subscription: type === "subs" ? order.id : null,
     };
   } else if (payment_method_rzp === payment_method.NET_BANKING) {
     paymentData = {
@@ -76,8 +76,8 @@ const getPaymentData = (data) => {
       status: paymentDetails.payload.payment.entity.status.toUpperCase(),
       method: payment_method_rzp,
       bank: paymentDetails.payload.payment.entity.bank,
-      order: (type === "order" ? order.id : null),
-      subscription: (type === "subs" ? order.id : null),
+      order: type === "order" ? order.id : null,
+      subscription: type === "subs" ? order.id : null,
     };
   } else {
     paymentData = {
@@ -91,17 +91,15 @@ const getPaymentData = (data) => {
       method: payment_method_rzp,
       cardId: paymentDetails.payload.payment.entity.card_id,
       cardNumber:
-        "**** **** **** " +
-        paymentDetails.payload.payment.entity.card.last4,
+        "**** **** **** " + paymentDetails.payload.payment.entity.card.last4,
       cardType: paymentDetails.payload.payment.entity.card.type,
       cardNetwork: paymentDetails.payload.payment.entity.card.network,
-      order: (type === "order" ? order.id : null),
-      subscription: (type === "subs" ? order.id : null),
+      order: type === "order" ? order.id : null,
+      subscription: type === "subs" ? order.id : null,
     };
   }
 
   return paymentData;
+};
 
-}
-
-module.exports = { razorpayService, getPaymentData };
+module.exports = razorpayService;
