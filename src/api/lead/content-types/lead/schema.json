@@ -41,7 +41,8 @@
         "INSTAGRAM",
         "SOCIAL_SELLER_WEBSITE",
         "YOUTUBE_CHANNEL",
-        "APP"
+        "APP",
+        "WEBSITE"
       ]
     },
     "user": {
@@ -65,6 +66,9 @@
     },
     "staff_note": {
       "type": "text"
+    },
+    "quantity": {
+      "type": "integer"
     }
   }
 }

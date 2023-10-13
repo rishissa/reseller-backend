@@ -49,6 +49,7 @@ module.exports = (plugin) => {
   //Handle User Update
   const update = plugin.controllers.user.update;
   plugin.controllers.user.update = async (ctx) => {
+    console.log(ctx.request.body);
     const { id } = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);
@@ -155,10 +156,36 @@ module.exports = (plugin) => {
     if (body.password) {
       body["password"] = hashPass;
     }
-    const register = await strapi
+    const duplicate_user = await strapi
       .query("plugin::users-permissions.user")
-      .create({ data: body });
-    // console.log(register)
+      .findOne({
+        where: {
+          $or: [
+            { username: ctx.request.body.username },
+            { email: ctx.request.body.email },
+          ],
+        },
+      });
+
+    if (duplicate_user) {
+      const target = {
+        username: ctx.request.body.username,
+        email: ctx.request.body.email,
+      };
+      console.log(target);
+      for (const key in duplicate_user) {
+        if (
+          duplicate_user.hasOwnProperty(key) &&
+          duplicate_user[key] === target[key]
+        ) {
+          return ctx.send({ message: `${key} is already in use` }, 400);
+        }
+      }
+    } else {
+      const register = await strapi
+        .query("plugin::users-permissions.user")
+        .create({ data: body });
+    }
     return ctx.send({
       email: ctx.request.body.email,
       username: ctx.request.body.email,
@@ -181,6 +208,7 @@ module.exports = (plugin) => {
       where: { id: id },
       populate: {
         role: true,
+        metric: true,
         subscriptions: {
           // where: { paymentId: { $not: { $null: true } } },
           populate: {

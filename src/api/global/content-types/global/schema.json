@@ -53,6 +53,7 @@
       "enum": [
         "RAZORPAY",
         "CASHFREE",
+        "PHONEPE",
         "NONE"
       ],
       "default": "RAZORPAY"
@@ -62,6 +63,34 @@
     },
     "cashfree_client_id": {
       "type": "string"
+    },
+    "shippingPrice_type": {
+      "type": "enumeration",
+      "enum": [
+        "PRICE",
+        "PERCENTAGE"
+      ],
+      "default": "PRICE"
+    },
+    "phonepe_merchant_id": {
+      "type": "string"
+    },
+    "phonepe_merchant_key": {
+      "type": "string"
+    },
+    "phonepe_key_index": {
+      "type": "string"
+    },
+    "firebase_auth": {
+      "type": "json"
+    },
+    "user_verification_method": {
+      "type": "enumeration",
+      "enum": [
+        "FIREBASE",
+        "MSG91"
+      ],
+      "default": "MSG91"
     }
   }
 }

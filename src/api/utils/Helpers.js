@@ -26,8 +26,26 @@ const uid = () => {
   return orderID;
 };
 
+const shippingPriceCalculation = (amount, per) => {
+  const percentage = per;
+  const totalAmount = amount + (amount * percentage) / 100;
+  return parseFloat((totalAmount - amount).toFixed(2));
+};
+
+const generateOTP = () => {
+  // Generate a random 6-digit number
+  const min = 100000;
+  const max = 999999;
+  const otp = Math.floor(Math.random() * (max - min + 1)) + min;
+
+  // Ensure the OTP is exactly 6 digits by converting it to a string
+  return otp.toString();
+};
+
 module.exports = {
   commission: addCommission,
   createActivity,
   generateOrderUid: uid,
+  shippingPriceCalculation,
+  generateOTP,
 };

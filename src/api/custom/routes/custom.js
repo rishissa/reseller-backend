@@ -119,6 +119,15 @@ module.exports = {
     },
     {
       method: "GET",
+      path: "/orders/export/:id",
+      handler: "custom.generateOrderDetailsPdfCatalogue",
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: "GET",
       path: "/orders/recent",
       handler: "custom.getRecentOrders",
       config: {
@@ -184,6 +193,15 @@ module.exports = {
       method: "GET",
       path: "/users/shares/:shares",
       handler: "custom.updateUsersShares",
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: "POST",
+      path: "/users/otp/send",
+      handler: "custom.sendOTP",
       config: {
         policies: [],
         middlewares: [],

@@ -81,7 +81,8 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       const global = await strapi.db.query("api::global.global").findOne();
 
       if (body.shiprocket_username || body.shiprocket_password) {
-        if (global.shiprocket_username || global.shiprocket_password) {
+        // if (global.shiprocket_username || global.shiprocket_password) {
+        try {
           const generateToken = await axios.post(
             "https://apiv2.shiprocket.in/v1/external/auth/login",
             {
@@ -89,10 +90,14 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
               password: body.shiprocket_password || global.shiprocket_password,
             }
           );
-          if (generateToken.status === 200) {
-            ctx.request.body.data.token = generateToken.data.token;
-          }
-          // console.log(generateToken);
+          ctx.request.body.data.token = generateToken.data.token;
+        } catch (err) {
+          return ctx.send(
+            {
+              message: `${err.response.data.message}`,
+            },
+            err.response.data.status_code
+          );
         }
       }
       await super.update(ctx);

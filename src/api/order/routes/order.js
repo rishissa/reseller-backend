@@ -31,6 +31,15 @@ const myExtraRoutes = [
     },
   },
   {
+    method: "GET",
+    path: "/orders/selected_variants/:ids",
+    handler: "order.selectedOrders",
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
+  {
     method: "POST",
     path: "/custom/checkout",
     handler: "order.createMultipleOrders",
@@ -120,6 +129,15 @@ const myExtraRoutes = [
     method: "GET",
     path: "/orders/all/date",
     handler: "order.getOrdersByDate",
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
+  {
+    method: "POST",
+    path: "/orders/phonepe/callback",
+    handler: "order.phonepeCallbackCapture",
     config: {
       policies: [],
       middlewares: [],

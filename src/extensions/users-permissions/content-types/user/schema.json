@@ -9,8 +9,7 @@
     "displayName": "User"
   },
   "options": {
-    "draftAndPublish": false,
-    "timestamps": true
+    "draftAndPublish": false
   },
   "attributes": {
     "username": {
@@ -154,11 +153,12 @@
       "type": "string"
     },
     "businessLogo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
       "allowedTypes": [
         "images"
-      ],
-      "type": "media",
-      "multiple": false
+      ]
     },
     "ordersCount": {
       "type": "integer"
@@ -186,6 +186,18 @@
       "relation": "oneToOne",
       "target": "api::user-metric.user-metric",
       "inversedBy": "user"
+    },
+    "cart": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::cart.cart",
+      "mappedBy": "user"
+    },
+    "otp": {
+      "type": "string"
+    },
+    "otp_expiration": {
+      "type": "datetime"
     }
   }
 }

@@ -103,6 +103,17 @@ const LeadStatuses = {
   completed: "COMPLETED",
 };
 
+const payment_gateways = {
+  razorpay: "RAZORPAY",
+  cashfree: "CASHFREE",
+  phonepe: "PHONEPE",
+};
+
+const PhonePePaymentStatuses = {
+  payment_success: "PAYMENT_SUCCESS",
+  payment_failed: "PAYMENT_ERROR",
+};
+
 module.exports = {
   PaymentStatus: PaymentStatus,
   order_status: OrderStatuses,
@@ -116,4 +127,6 @@ module.exports = {
   shiprocket_status: ShiprocketStatus,
   notify_type: NotificationType,
   lead_status: LeadStatuses,
+  payment_gateways,
+  phonepe_status: PhonePePaymentStatuses,
 };

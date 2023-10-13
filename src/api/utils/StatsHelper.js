@@ -62,7 +62,9 @@ const getWalletOrdersCount = async (strapi) => {
 
 const getProductsCount = async (strapi) => {
   try {
-    const productsCount = await strapi.db.query("api::product.product").count();
+    const productsCount = await strapi.db
+      .query("api::product.product")
+      .count({ where: { isActive: true } });
     return productsCount;
   } catch (err) {
     console.log(err);
@@ -102,10 +104,10 @@ const getTotalRevenue = async (ctx, next) => {
     console.log(totalSubAmt);
     var totalSalesAmt = 0;
     salesRevenue.forEach((order) => {
-
       order.order_products.forEach((prod) => {
         if (prod !== null) {
-          totalSalesAmt += parseFloat(prod.order_price) || 0 * parseInt(prod.quantity) || 0;
+          totalSalesAmt +=
+            parseFloat(prod.order_price) || 0 * parseInt(prod.quantity) || 0;
         }
       });
     });
