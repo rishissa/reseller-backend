@@ -52,7 +52,7 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
       const pagination = ctx.request.query;
       const getLeads = async (offset, limit) => {
         const leads = await strapi.db.query("api::lead.lead").findWithCount({
-          orderBy: { id: "asc" },
+          orderBy: { id: "desc" },
           offset: offset,
           limit: limit,
           populate: {

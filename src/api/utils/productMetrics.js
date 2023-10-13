@@ -41,6 +41,8 @@ module.exports = {
         }
         break;
       case "premium_plan_orders":
+        console.log(data.products_variants);
+        console.log("data.products_variants", data.products_variants);
         for (const item of data.products_variants) {
           const productVar = await strapi.db
             .query("api::product-variant.product-variant")

@@ -112,6 +112,13 @@
       "relation": "oneToOne",
       "target": "api::wallet.wallet",
       "inversedBy": "order"
+    },
+    "payment_gateway": {
+      "type": "enumeration",
+      "enum": [
+        "RAZORPAY",
+        "PHONEPE"
+      ]
     }
   }
 }

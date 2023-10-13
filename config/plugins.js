@@ -1,5 +1,13 @@
 module.exports = ({ env }) => ({
   // ...
+  "users-permissions": {
+    config: {
+      ratelimit: {
+        interval: 30000,
+        max: 20,
+      },
+    },
+  },
   email: {
     config: {
       provider: "nodemailer",

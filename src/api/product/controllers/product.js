@@ -33,7 +33,6 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       } catch (err) {
         return ctx.send(err, 400);
       }
-      // const response = await super.create(ctx);
       //create variant
       var newVariants = [];
       // console.log(variants[0].bulk_pricings);
@@ -155,6 +154,8 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       const filters = ctx.request.filters;
       const sort = ctx.request.sort;
 
+      console.log(JSON.stringify(filters));
+      console.log(sort);
       var meta;
       var products;
 
@@ -221,7 +222,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         "api::product.product",
         id,
         {
-          fields: ["name", "slug", "id", "desc"],
+          fields: ["name", "slug", "id", "desc", "yt_video_link"],
           populate: {
             gallery: true,
             product_variants: { populate: { bulk_pricings: true } },

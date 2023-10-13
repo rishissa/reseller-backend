@@ -104,4 +104,4 @@ const getPaymentData = (data) => {
 
 }
 
-module.exports = { razorpayService, getPaymentData };
+module.exports = razorpayService;
