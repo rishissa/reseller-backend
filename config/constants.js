@@ -1,5 +1,6 @@
 const domain = "https://api.sumeetonline.in";
 const baseURL = domain + "/api";
+const admin_url = "https://admin.sumeetonline.in";
 
 const PaymentStatus = {
   authorized: "AUTHORIZED",
@@ -9,6 +10,7 @@ const PaymentStatus = {
 
 const OrderStatuses = {
   new: "NEW",
+  all: "ALL",
   accepted: "ACCEPTED",
   declined: "DECLINED",
   processing: "PROCESSING",
@@ -114,6 +116,12 @@ const PhonePePaymentStatuses = {
   payment_failed: "PAYMENT_ERROR",
 };
 
+const ShippingOptions = {
+  shipping_price: "SHIPPING_PRICE",
+  shipping_percentage: "SHIPPING_PERCENTAGE",
+  free_shipping: "FREE_SHIPPING",
+};
+
 module.exports = {
   PaymentStatus: PaymentStatus,
   order_status: OrderStatuses,
@@ -122,6 +130,7 @@ module.exports = {
   baseURL,
   getHeaders,
   domain,
+  admin_url,
   txn_purpose,
   activity_status: ActivityStatus,
   shiprocket_status: ShiprocketStatus,
@@ -129,4 +138,5 @@ module.exports = {
   lead_status: LeadStatuses,
   payment_gateways,
   phonepe_status: PhonePePaymentStatuses,
+  shipping_options: ShippingOptions,
 };

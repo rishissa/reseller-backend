@@ -1,5 +1,7 @@
 "use strict";
 
+const { payment_methods } = require("../../../../config/constants");
+
 /**
  * `variant-qty-checker` middleware
  */
@@ -40,6 +42,21 @@ module.exports = (config, { strapi }) => {
           400
         );
       }
+
+      //check if cod is enabled for this product
+      if (
+        (variant.product.cod_enabled === false ||
+          variant.product.cod_enabled === null) &&
+        ctx.request.body.consumer.payment_mode === payment_methods.cod
+      ) {
+        return ctx.send(
+          {
+            message: `COD is not enabled in the product ${variant.product.name} VariantID:${variant.id}`,
+          },
+          400
+        );
+      }
+
       variant.org_qty = variant.quantity;
       variant.quantity = prod.quantity;
       arrayOfProds.push(variant);

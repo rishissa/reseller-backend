@@ -19,7 +19,7 @@
     },
     "slug": {
       "type": "uid",
-      "required": true
+      "required": false
     },
     "products": {
       "type": "relation",

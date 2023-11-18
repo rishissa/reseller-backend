@@ -27,5 +27,14 @@ module.exports = {
         middlewares: [], //query validator
       },
     },
+    {
+      method: "GET",
+      path: "/leads/stats",
+      handler: "lead.getLeadStats",
+      config: {
+        policies: [],
+        middlewares: [], //query validator
+      },
+    },
   ],
 };

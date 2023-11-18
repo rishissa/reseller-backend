@@ -71,6 +71,7 @@ module.exports = createCoreController(
               limit: limit,
               orderBy: { id: "asc" },
               populate: {
+                thumbnail: true,
                 products: {
                   populate: {
                     thumbnail: true,

@@ -40,66 +40,66 @@ const razorpayService = {
   },
 };
 
-const {
-  payment_method,
-  order_status,
-} = require("../../../../config/constants");
+// const {
+//   payment_method,
+//   order_status,
+// } = require("../../../../config/constants");
 
-const getPaymentData = (data) => {
-  var paymentData;
-  const { type, paymentDetails, order } = data;
+// const getPaymentData = (data) => {
+//   var paymentData;
+//   const { type, paymentDetails, order } = data;
 
-  let payment_method_rzp = paymentDetails.payload.payment.entity.method;
+//   let payment_method_rzp = paymentDetails.payload.payment.entity.method;
 
-  if (payment_method_rzp === payment_method.UPI) {
-    paymentData = {
-      rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
-      rzpaymentId: paymentDetails.payload.payment.entity.id,
-      amount: paymentDetails.payload.payment.entity.amount / 100,
-      email: paymentDetails.payload.payment.entity.email,
-      contact: paymentDetails.payload.payment.entity.contact,
-      currency: paymentDetails.payload.payment.entity.currency,
-      status: paymentDetails.payload.payment.entity.status.toUpperCase(),
-      method: payment_method_rzp,
-      vpa: paymentDetails.payload.payment.entity.vpa,
-      order: type === "order" ? order.id : null,
-      subscription: type === "subs" ? order.id : null,
-    };
-  } else if (payment_method_rzp === payment_method.NET_BANKING) {
-    paymentData = {
-      rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
-      rzpaymentId: paymentDetails.payload.payment.entity.id,
-      amount: paymentDetails.payload.payment.entity.amount / 100,
-      email: paymentDetails.payload.payment.entity.email,
-      contact: paymentDetails.payload.payment.entity.contact,
-      currency: paymentDetails.payload.payment.entity.currency,
-      status: paymentDetails.payload.payment.entity.status.toUpperCase(),
-      method: payment_method_rzp,
-      bank: paymentDetails.payload.payment.entity.bank,
-      order: type === "order" ? order.id : null,
-      subscription: type === "subs" ? order.id : null,
-    };
-  } else {
-    paymentData = {
-      rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
-      rzpaymentId: paymentDetails.payload.payment.entity.id,
-      amount: paymentDetails.payload.payment.entity.amount / 100,
-      email: paymentDetails.payload.payment.entity.email,
-      contact: paymentDetails.payload.payment.entity.contact,
-      currency: paymentDetails.payload.payment.entity.currency,
-      status: paymentDetails.payload.payment.entity.status.toUpperCase(),
-      method: payment_method_rzp,
-      cardId: paymentDetails.payload.payment.entity.card_id,
-      cardNumber:
-        "**** **** **** " + paymentDetails.payload.payment.entity.card.last4,
-      cardType: paymentDetails.payload.payment.entity.card.type,
-      cardNetwork: paymentDetails.payload.payment.entity.card.network,
-      order: type === "order" ? order.id : null,
-      subscription: type === "subs" ? order.id : null,
-    };
-  }
+//   if (payment_method_rzp === payment_method.UPI) {
+//     paymentData = {
+//       rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+//       rzpaymentId: paymentDetails.payload.payment.entity.id,
+//       amount: paymentDetails.payload.payment.entity.amount / 100,
+//       email: paymentDetails.payload.payment.entity.email,
+//       contact: paymentDetails.payload.payment.entity.contact,
+//       currency: paymentDetails.payload.payment.entity.currency,
+//       status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+//       method: payment_method_rzp,
+//       vpa: paymentDetails.payload.payment.entity.vpa,
+//       order: type === "order" ? order.id : null,
+//       subscription: type === "subs" ? order.id : null,
+//     };
+//   } else if (payment_method_rzp === payment_method.NET_BANKING) {
+//     paymentData = {
+//       rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+//       rzpaymentId: paymentDetails.payload.payment.entity.id,
+//       amount: paymentDetails.payload.payment.entity.amount / 100,
+//       email: paymentDetails.payload.payment.entity.email,
+//       contact: paymentDetails.payload.payment.entity.contact,
+//       currency: paymentDetails.payload.payment.entity.currency,
+//       status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+//       method: payment_method_rzp,
+//       bank: paymentDetails.payload.payment.entity.bank,
+//       order: type === "order" ? order.id : null,
+//       subscription: type === "subs" ? order.id : null,
+//     };
+//   } else {
+//     paymentData = {
+//       rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+//       rzpaymentId: paymentDetails.payload.payment.entity.id,
+//       amount: paymentDetails.payload.payment.entity.amount / 100,
+//       email: paymentDetails.payload.payment.entity.email,
+//       contact: paymentDetails.payload.payment.entity.contact,
+//       currency: paymentDetails.payload.payment.entity.currency,
+//       status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+//       method: payment_method_rzp,
+//       cardId: paymentDetails.payload.payment.entity.card_id,
+//       cardNumber:
+//         "**** **** **** " + paymentDetails.payload.payment.entity.card.last4,
+//       cardType: paymentDetails.payload.payment.entity.card.type,
+//       cardNetwork: paymentDetails.payload.payment.entity.card.network,
+//       order: type === "order" ? order.id : null,
+//       subscription: type === "subs" ? order.id : null,
+//     };
+//   }
 
-  return paymentData;
-};
+//   return paymentData;
+// };
 
 module.exports = razorpayService;

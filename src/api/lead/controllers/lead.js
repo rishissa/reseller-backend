@@ -48,15 +48,28 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
   async find(ctx, next) {
     var meta;
     var leadsList;
+    let tags = Object.values(lead_status);
+    let tag = ctx.request.query.tag;
     try {
       const pagination = ctx.request.query;
+
+      if (!tag || tag === undefined || tag.length === 0) {
+        tag = tags;
+      } else {
+        if (!tags.includes(tag.toUpperCase())) {
+          return ctx.send({ status: `Only tags allowed are [${tags}].` }, 400);
+        }
+        tag = [tag.toUpperCase()];
+      }
+
       const getLeads = async (offset, limit) => {
         const leads = await strapi.db.query("api::lead.lead").findWithCount({
+          where: { status: { $in: tag } },
           orderBy: { id: "desc" },
           offset: offset,
           limit: limit,
           populate: {
-            assigned_to: true,
+            assigned_to: { populate: { avatar: true } },
             user: { populate: { avatar: true } },
             product: { populate: { thumbnail: true } },
           },
@@ -213,6 +226,33 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
     } catch (error) {
       console.log(error);
       return ctx.send(error, 500);
+    }
+  },
+
+  async getLeadStats(ctx) {
+    try {
+      const result = await strapi.db.connection.raw(
+        `SELECT status, COUNT(*) as count
+FROM public.leads
+GROUP BY status;
+`
+      );
+
+      let obj3 = {};
+      let lead_statuses = Object.values(lead_status);
+      let allCount = 0;
+
+      for (const status of lead_statuses) {
+        const match = result.rows.find((item) => item.status === status);
+        obj3[status.toLowerCase()] = match ? parseInt(match.count) : 0;
+        allCount += match ? parseInt(match.count) : 0;
+      }
+
+      obj3["all"] = allCount;
+      return ctx.send(obj3, 200);
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
     }
   },
 }));

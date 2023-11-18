@@ -28,7 +28,6 @@ module.exports = (config, { strapi }) => {
             },
           },
         });
-      console.log(userInfo);
       var recentSub;
 
       if (userInfo.subscriptions.length === 0) {
@@ -54,7 +53,6 @@ module.exports = (config, { strapi }) => {
         if (recentSub.validTo > now) {
           //there is still valid plan going on
           //send the plan details
-          console.log(recentSub.plan);
           ctx.request.plan = recentSub.plan;
           console.log("CP2");
           return await next();

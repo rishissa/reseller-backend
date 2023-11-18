@@ -134,6 +134,15 @@ const myExtraRoutes = [
       middlewares: [],
     },
   },
+  {
+    method: "POST",
+    path: "/orders/phonepe/callback",
+    handler: "order.phonepeCallbackCapture",
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
 ];
 
 module.exports = customRouter(defaultRouter, myExtraRoutes);

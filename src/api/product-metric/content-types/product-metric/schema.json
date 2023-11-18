@@ -28,7 +28,7 @@
       "type": "integer"
     },
     "revenue_generated": {
-      "type": "integer"
+      "type": "decimal"
     },
     "profit_margin": {
       "type": "decimal"

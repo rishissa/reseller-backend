@@ -2,6 +2,7 @@ const { payment_methods } = require("../../../config/constants");
 
 const bulkPriceVariants = async (plan, user, products, consumer_body) => {
   try {
+    console.log(consumer_body);
     //check which product variant has bulkPricing
     //if have ==> the calculate amount with that bulk pricing
     //else calculate pricing as you were doing before
@@ -13,9 +14,11 @@ const bulkPriceVariants = async (plan, user, products, consumer_body) => {
         if (plan.name !== "Free") {
           if (plan.premiumPricing === true && user.isPremium === true) {
             totalAmount +=
-              parseFloat(prod.quantity) * parseFloat(prod.premiumPrice);
+              parseFloat(prod.quantity) *
+              (parseFloat(prod.premiumPrice) || parseFloat(prod.price));
             variantPrice[prod.id] =
-              parseFloat(prod.quantity) * parseFloat(prod.premiumPrice);
+              parseFloat(prod.quantity) *
+              (parseFloat(prod.premiumPrice) || parseFloat(prod.price));
           } else {
             totalAmount += parseFloat(prod.quantity) * parseFloat(prod.price);
             variantPrice[prod.id] =
@@ -35,7 +38,7 @@ const bulkPriceVariants = async (plan, user, products, consumer_body) => {
       } else {
         //check the quantity where it lies in which bulk_pricing category
         for (const it of prod.bulk_pricings) {
-          if (prod.quantity >= it.from && prod.quantity <= it.to) {
+          if (prod.quantity >= it.from && prod.quantity < it.to) {
             totalAmount += parseFloat(prod.quantity) * parseFloat(it.price);
             // console.log(prod.id);
             variantPrice[prod.id] =

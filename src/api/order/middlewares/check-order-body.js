@@ -12,7 +12,7 @@ module.exports = (config, { strapi }) => {
     const { id } = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);
-
+    console.log(ctx.request.body);
     var userInfo = await strapi
       .query("plugin::users-permissions.user")
       .findOne({
@@ -40,6 +40,8 @@ module.exports = (config, { strapi }) => {
           isResellerOrder: Joi.bool(),
         }),
         products: Joi.array().min(1).required(),
+        payment_instrument_type: Joi.optional(),
+        payment_instrument_target: Joi.optional(),
       });
     } else {
       schema = Joi.object().keys({
@@ -54,6 +56,8 @@ module.exports = (config, { strapi }) => {
           isResellerOrder: Joi.bool(),
         }),
         products: Joi.array().min(1).required(),
+        payment_instrument_type: Joi.optional(),
+        payment_instrument_target: Joi.optional(),
       });
     }
     const options = {

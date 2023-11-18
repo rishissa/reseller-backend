@@ -132,6 +132,9 @@ module.exports = (plugin) => {
           {
             phone: phone,
           },
+          {
+            phone: `+91${phone}`,
+          },
         ],
       },
     });

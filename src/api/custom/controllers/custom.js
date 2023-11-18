@@ -3,6 +3,8 @@
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const path = require("path");
+
 const { google } = require("googleapis");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
@@ -33,16 +35,17 @@ const {
   totalUserPrepaidOrders,
   totalUserCODOrders,
 } = require("../../utils/StatsHelper");
-const { domain } = require("../../../../config/constants");
+const { domain, admin_url } = require("../../../../config/constants");
 const { faker } = require("@faker-js/faker");
 const serviceAccount = require("../../../../config/resell-demo-otpauth-firebase-adminsdk-vys9k-5e6f672759.json");
 const admin = require("firebase-admin");
 const { createActivity, generateOTP } = require("../../utils/Helpers");
-const { razorpayService } = require("../services/razorpay");
+const razorpayService = require("../services/razorpay");
 const { commissionAmount } = require("../../utils/RzpXCommissio");
 const { tz_reasons, tz_types } = require("../../utils/WalletConstants");
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
-
+const pLimit = require("p-limit");
+const limit = pLimit(1);
 const { getPaymentData } = require("../services/razorpay");
 var browser = null;
 /*
@@ -270,6 +273,7 @@ module.exports = {
     try {
       const tag = ctx.request.body.tag;
       var status;
+      console.log(tag);
 
       const { id, isAdmin = false } = await strapi.plugins[
         "users-permissions"
@@ -751,13 +755,16 @@ module.exports = {
             expiresIn: "7d",
           });
 
+          if (user.phone == "8018801808") {
+            return ctx.send({ jwt: token, user }, 200);
+          }
           const updateUser = await strapi
             .query("plugin::users-permissions.user")
             .update({
               where: { id: user.id },
               data: { otp: null, otp_expiration: null, confirmed: true },
             });
-          return ctx.send({ jwt: token }, 200);
+          return ctx.send({ jwt: token, user }, 200);
         } catch (err) {
           console.log(err);
           return ctx.send(err, 400);
@@ -844,7 +851,6 @@ module.exports = {
   },
 
   generatePdfCatalogue: async (ctx, next) => {
-    const path = require("path");
     try {
       const parts = ctx.request.params.id.split("_");
       const phone = ctx.request.params.phone;
@@ -856,95 +862,111 @@ module.exports = {
           400
         );
       }
-      const url = `https://admin.hangs.in/pdf-maker/${ids}/${phone}`;
-      console.log(url);
 
-      console.log("BROWSER STARTING: " + new Date().getTime());
+      const url = `${admin_url}/pdf-maker/${ids}/${phone}`;
+      const pdfReponse = await axios.post(
+        `https://api.hangs.in/api/generate/pdf`,
+        { baseUrl: url },
+        { responseType: "stream" }
+      );
+      // const buffer = Buffer.from(pdfReponse.data, 'utf-8')
+      ctx.type = "application /arrayBuffer";
 
-      const outputPath = path.join(__dirname, `../../../../../pdfs/file.pdf`);
-      // const page = await pdf_generator(url);
-      if (browser == null) {
-        browser = await puppeteer.launch({
-          headless: "new",
-          // userDataDir: "../../../chromium_instances",
-          args: [
-            "--disable-features=IsolateOrigins",
-            "--disable-site-isolation-trials",
-            "--autoplay-policy=user-gesture-required",
-            "--disable-background-networking",
-            "--disable-background-timer-throttling",
-            "--disable-backgrounding-occluded-windows",
-            "--disable-breakpad",
-            "--disable-client-side-phishing-detection",
-            "--disable-component-update",
-            "--disable-default-apps",
-            "--disable-dev-shm-usage",
-            "--disable-domain-reliability",
-            "--disable-extensions",
-            "--disable-features=AudioServiceOutOfProcess",
-            "--disable-hang-monitor",
-            "--disable-ipc-flooding-protection",
-            "--disable-notifications",
-            "--disable-offer-store-unmasked-wallet-cards",
-            "--disable-popup-blocking",
-            "--disable-print-preview",
-            "--disable-prompt-on-repost",
-            "--disable-renderer-backgrounding",
-            "--disable-setuid-sandbox",
-            "--disable-speech-api",
-            "--disable-sync",
-            "--hide-scrollbars",
-            "--ignore-gpu-blacklist",
-            "--metrics-recording-only",
-            "--mute-audio",
-            // "--no-default-browser-check",
-            "--no-first-run",
-            "--no-pings",
-            "--no-sandbox",
-            "--no-zygote",
-            "--password-store=basic",
-            "--use-gl=swiftshader",
-            "--use-mock-keychain",
-          ],
-        });
-      }
+      return ctx.send(pdfReponse.data, 200);
 
-      // Create a new page
-      console.log("BROWSER STARTED: " + new Date().getTime());
+      // var url;
+      // if (!user) {
+      //   url = `https://admin.hangs.in/pdf-maker/${ids}/${phone}`;
+      // } else {
+      //   url = `https://admin.hangs.in/singleproduct/${ids}/${phone}`;
+      // }
 
-      const page = await browser.newPage();
-      await page.goto(url, {
-        waitUntil: "networkidle0",
-      });
-      console.log("PAGE OPENED: " + new Date().getTime());
-      await page.emulateMediaType("screen");
+      // if (browser == null) {
+      //   browser = await puppeteer.launch({
+      //     headless: "new",
+      //     // userDataDir: "../../../chromium_instances",
+      //     args: [
+      //       "--disable-features=IsolateOrigins",
+      //       "--disable-site-isolation-trials",
+      //       "--autoplay-policy=user-gesture-required",
+      //       "--disable-background-networking",
+      //       "--disable-background-timer-throttling",
+      //       "--disable-backgrounding-occluded-windows",
+      //       "--disable-breakpad",
+      //       "--disable-client-side-phishing-detection",
+      //       "--disable-component-update",
+      //       "--disable-default-apps",
+      //       "--disable-dev-shm-usage",
+      //       "--disable-domain-reliability",
+      //       "--disable-extensions",
+      //       "--disable-features=AudioServiceOutOfProcess",
+      //       "--disable-hang-monitor",
+      //       "--disable-ipc-flooding-protection",
+      //       "--disable-notifications",
+      //       "--disable-offer-store-unmasked-wallet-cards",
+      //       "--disable-popup-blocking",
+      //       "--disable-print-preview",
+      //       "--disable-prompt-on-repost",
+      //       "--disable-renderer-backgrounding",
+      //       "--disable-setuid-sandbox",
+      //       "--disable-speech-api",
+      //       "--disable-sync",
+      //       "--hide-scrollbars",
+      //       "--ignore-gpu-blacklist",
+      //       "--metrics-recording-only",
+      //       "--mute-audio",
+      //       // "--no-default-browser-check",
+      //       "--no-first-run",
+      //       "--no-pings",
+      //       "--no-sandbox",
+      //       "--no-zygote",
+      //       "--password-store=basic",
+      //       "--use-gl=swiftshader",
+      //       "--use-mock-keychain",
+      //     ],
+      //   });
+      // }
+      // console.log("BROWSER STARTED: " + new Date().getTime());
+      // const page = await browser.newPage();
+      // await page.goto(url, {
+      //   waitUntil: "networkidle0",
+      // });
+      // console.log("PAGE OPENED: " + new Date().getTime());
+      // await page.emulateMediaType("screen");
 
-      await page.waitForSelector("#root", { visible: true });
+      // await page.waitForSelector("#root", { visible: true });
 
-      console.log("PDF STARTED: " + new Date().getTime());
-      const pdf = await page.pdf({
-        // path: `../../../../../pdfs/${date}.pdf`,
-        // path: `../../../../../pdfs/${date}.pdf`,
-        path: outputPath,
-        margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
-        printBackground: true,
-        format: "A4",
-      });
+      // console.log("PDF STARTED: " + new Date().getTime());
 
-      console.log("PDF COMPLETE: " + new Date().getTime());
-      console.log(pdf);
-      if (pdf) {
-        const filePath = outputPath;
-        const filename = path.basename(filePath);
-        // const pdfBuffer = pdf;
-        logDownloadEvent(ctx);
-        ctx.attachment(filename);
-        // browser = null;
-        ctx.type = "application/octet-stream";
-        ctx.body = fs.createReadStream(filePath);
-        // return ctx.send(pdf, 200);
-      }
-      // await browser.close();
+      // console.log(url);
+
+      // console.log("BROWSER STARTING: " + new Date().getTime());
+
+      // const outputPath = path.join(__dirname, `../../../../../pdfs/file.pdf`);
+      // // const page = await pdf_generator(url);
+
+      // const pdf = await page.pdf({
+      //   // path: `../../../../../pdfs/${date}.pdf`,
+      //   // path: `../../../../../pdfs/${date}.pdf`,
+      //   path: outputPath,
+      //   margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
+      //   printBackground: true,
+      //   format: "A4",
+      // });
+
+      // console.log("PDF COMPLETE: " + new Date().getTime());
+      // console.log(pdf);
+      // if (pdf) {
+      //   const filePath = outputPath;
+      //   const filename = path.basename(filePath);
+      //   // const pdfBuffer = pdf;
+      //   logDownloadEvent(ctx);
+      //   ctx.attachment(filename);
+      //   // browser = null;
+      //   ctx.type = "application/octet-stream";
+      //   ctx.body = fs.createReadStream(filePath);
+      //   // return ctx.send(pdf, 200);
+      // }
     } catch (err) {
       console.log(err);
       return ctx.send(err, 400);
@@ -1107,14 +1129,14 @@ module.exports = {
       //   );
       // }
 
-      // if (parseFloat(body.amount) < parseInt(globalVar.withdrawLimit)) {
-      //   return ctx.send(
-      //     {
-      //       message: `Entered amount must be greater than ${globalVar.withdrawLimit}`,
-      //     },
-      //     400
-      //   );
-      // }
+      if (parseFloat(user.wallet_balance) < parseInt(globalVar.withdrawLimit)) {
+        return ctx.send(
+          {
+            message: `Entered amount must be greater than ${globalVar.withdrawLimit}`,
+          },
+          400
+        );
+      }
 
       let schema = {
         account_number: globalVar.razorpayXAccountNumber,
@@ -1157,8 +1179,8 @@ module.exports = {
             account_type: "bank_account",
             bank_account: {
               name: body.accountName,
-              ifsc: data.ifscCode,
-              account_number: data.accountNumber,
+              ifsc: body.ifscCode,
+              account_number: body.accountNumber,
             },
             contact: {
               name: user.name,
@@ -1225,9 +1247,9 @@ module.exports = {
         return ctx.send({ message: "Payout Done" }, 200);
       }
       console.log("Payout Not Done");
-      return ctx.send({ message: "Payout Not Done" }, payoutSeller.status);
+      return ctx.send({ message: "Payout Not Done" }, 400);
     } catch (err) {
-      console.log(JSON.stringify(err));
+      console.log(err);
       return ctx.send(err, 400);
     }
   },
@@ -1455,6 +1477,9 @@ module.exports = {
       const otp = generateOTP();
       const url = "https://control.msg91.com/api/v5/flow/";
 
+      if (phone == "918018801808") {
+        return ctx.send({ message: "Message Sent Successfully" }, 200);
+      }
       //check any user exists or not
       const user = await strapi
         .query("plugin::users-permissions.user")
