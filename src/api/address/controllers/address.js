@@ -24,7 +24,7 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
       addressLine2,
       user,
     } = ctx.request.body;
-
+    console.log(ctx.request.body);
     try {
       if (
         ctx.request &&
@@ -34,7 +34,7 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
         const { id, isAdmin = false } = await strapi.plugins[
           "users-permissions"
         ].services.jwt.getToken(ctx);
-
+        console.log(id);
         // user = id;
 
         adminInfo = await strapi
@@ -46,14 +46,14 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
             populate: { role: true },
           });
 
-        console.log(adminInfo);
+        // console.log(adminInfo);
         if (adminInfo.role.name === "Admin") {
           userID = user;
         } else {
           userID = id;
         }
       }
-
+      console.log(userID);
       const entry = await strapi.entityService.create("api::address.address", {
         data: {
           name: name,
@@ -72,7 +72,7 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
       return ctx.send(entry, 200);
     } catch (error) {
       console.log(error);
-      return ctx.send(error, 200);
+      return ctx.send(error, 400);
     }
   },
 

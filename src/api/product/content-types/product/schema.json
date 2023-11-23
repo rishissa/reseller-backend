@@ -79,6 +79,15 @@
     "cod_enabled": {
       "type": "boolean",
       "default": false
+    },
+    "shipping": {
+      "type": "enumeration",
+      "enum": [
+        "SHIPPING_PRICE",
+        "SHIPPING_PERCENTAGE",
+        "FREE_SHIPPING"
+      ],
+      "required": true
     }
   }
 }

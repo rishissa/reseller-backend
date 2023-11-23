@@ -1,5 +1,6 @@
-const domain = "https://api.hangs.in";
+const domain = "https://api.arham-watches.hangs.in";
 const baseURL = domain + "/api";
+const admin_url = "https://admin.arham-watches.hangs.in";
 
 const PaymentStatus = {
   authorized: "AUTHORIZED",
@@ -114,6 +115,12 @@ const PhonePePaymentStatuses = {
   payment_failed: "PAYMENT_ERROR",
 };
 
+const ShippingOptions = {
+  shipping_price: "SHIPPING_PRICE",
+  shipping_percentage: "SHIPPING_PERCENTAGE",
+  free_shipping: "FREE_SHIPPING",
+};
+
 module.exports = {
   PaymentStatus: PaymentStatus,
   order_status: OrderStatuses,
@@ -129,4 +136,5 @@ module.exports = {
   lead_status: LeadStatuses,
   payment_gateways,
   phonepe_status: PhonePePaymentStatuses,
+  shipping_options: ShippingOptions,
 };

@@ -1,9 +1,10 @@
 "use strict";
 
+const { payment_methods } = require("../../../../config/constants");
+
 /**
  * `variant-qty-checker` middleware
  */
-const { payment_methods } = require("../../../../config/constants");
 
 module.exports = (config, { strapi }) => {
   // Add your own logic here.
@@ -25,7 +26,6 @@ module.exports = (config, { strapi }) => {
           },
         }
       );
-
       if (variant.product.isActive === false) {
         return ctx.send(
           {

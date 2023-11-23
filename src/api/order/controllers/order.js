@@ -22,6 +22,7 @@ const {
   notify_type,
   payment_gateways,
   phonepe_status,
+  shipping_options,
 } = require("../../../../config/constants");
 const Razorpay = require("razorpay");
 const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
@@ -217,10 +218,11 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       let { totalAmount, variantPrice } = await bulkPriceVariants(
         plan,
         userInfo,
-        arrayOfProds
+        arrayOfProds,
+        consumer
       );
 
-      console.log("Bulk Variant");
+      console.log("variantPrice");
       console.log(variantPrice);
       var globalVar = ctx.request.global_var;
 
@@ -238,6 +240,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
                 ? products[i].sellingPrice
                 : null,
               status: order_status.new,
+              note: products[i].note || null,
               // sellingPrice: isResellerOrder == true ? sellingPrice : null,
             },
           });
@@ -245,39 +248,58 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         //calculate shipping price
         //if shippingPrice_type === price, then simply add the price
         //if percentage, then add the percentage price from the productVariant price and sum up the totalAmount
-        if (globalVar.shippingPrice_type === "PRICE") {
-          console.log("Inside PRICE");
-          totalAmount += orderPro.product.shipping_price
-            ? orderPro.product.shipping_price
-            : 0;
-        } else {
-          let shipping_price_per = globalVar.shippingPrice;
+        // if (globalVar.shippingPrice_type === "PRICE") {
+        //   console.log("Inside PRICE");
+        //   totalAmount += orderPro.product.shipping_price
+        //     ? orderPro.product.shipping_price
+        //     : 0;
+        // } else {
+        //   let shipping_price_per = globalVar.shippingPrice;
+        //   let shipping_price = shippingPriceCalculation(
+        //     Object.values(variantPrice)[i],
+        //     shipping_price_per
+        //   );
+
+        //   totalAmount += shipping_price;
+        // }
+        if (orderPro.product.shipping === shipping_options.shipping_price) {
+          totalAmount += orderPro.product.shipping_price || 0;
+        } else if (
+          orderPro.product.shipping === shipping_options.shipping_percentage
+        ) {
           let shipping_price = shippingPriceCalculation(
             Object.values(variantPrice)[i],
-            shipping_price_per
+            orderPro.product.shipping_price || 0
           );
-
           totalAmount += shipping_price;
+        } else {
+          totalAmount += 0;
         }
-
         orderProducts.push(prod);
       }
-
+      // console.log(totalAmount);
       totalAmount = parseFloat(totalAmount.toFixed(2));
+      // if (
+      //   globalVar.codPrepaidAmount == 0 ||
+      //   globalVar.codPrepaidAmount === null
+      // )
+
       if (payment_mode === "COD") {
         if (plan === null) {
           //check if product has any shipping Price
           //if yes, use that
           //else use global shippingPrice
+          totalAmount = 0;
           totalAmount += parseFloat(globalVar.codPrepaidAmount);
-          totalAmount = commission(totalAmount);
+          // totalAmount = commission(totalAmount);
         }
 
         if (plan) {
           if (plan.name === "Free") {
             if (plan.codAllowed === true) {
+              totalAmount = 0;
               totalAmount += parseFloat(globalVar.codPrepaidAmount);
-              totalAmount = commission(totalAmount);
+              // totalAmount = commission(totalAmount);
             } else {
               return ctx.send(
                 { message: `COD is not allowed in ${plan.name} plan` },
@@ -286,8 +308,9 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             }
           } else {
             if (plan.codAllowed === true) {
+              totalAmount = 0;
               totalAmount += parseFloat(globalVar.codPrepaidAmount);
-              totalAmount = commission(totalAmount);
+              // totalAmount = commission(totalAmount);
               // if (plan.price === null || plan.price === 0) {
               // } else {
               //   console.log("inside plan and price");
@@ -304,17 +327,172 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             }
           }
         }
+
+        if (totalAmount == 0) {
+          order = await strapi.entityService.create("api::order.order", {
+            data: {
+              slug: generateOrderUid(),
+              order_products: [...orderProducts],
+              address: consumer.addressID,
+              status: order_status.new,
+              consumerName: consumer.conName || null,
+              consumerPhone: consumer.conPhone || null,
+              consumerEmail: consumer.conEmail || null,
+              isResellerOrder: consumer.isResellerOrder,
+              payment_mode: consumer.payment_mode,
+              users_permissions_user: user_id,
+            },
+          });
+
+          let order_data = await strapi.db.query("api::order.order").findOne({
+            where: { id: order.id },
+            populate: {
+              order_products: {
+                populate: {
+                  product_variant: {
+                    populate: {
+                      product: {
+                        populate: {
+                          thumbnail: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          });
+          // totalAmount += parseFloat(globalVar.shippingPrice);
+
+          //update order
+          const entry_update = await strapi.db
+            .query("api::order.order")
+            .update({
+              where: { id: order.id },
+              data: {
+                isPaid: true,
+              },
+            });
+
+          let metricProductData = {
+            // id: userInfo.id,
+            field: "ordered_count",
+            products_variants: arrayOfProds,
+          };
+          const prod_metrics = await productMetrics(strapi, metricProductData);
+          //create activity
+          let metricProductData2 = {
+            // id: userInfo.id,
+            field: "revenue_generated",
+            ordered_products: orderProducts,
+          };
+          const prod_metrics_revenue = await productMetrics(
+            strapi,
+            metricProductData2
+          );
+          let metricProductData3 = {
+            // id: userInfo.id,
+            field: "premium_plan_orders",
+            products_variants: order_data.order_products,
+          };
+          const prod_metrics_revenue2 = await productMetrics(
+            strapi,
+            metricProductData3
+          );
+          let activity_data = {
+            event: activity_status.order_placed,
+            user: userInfo.id,
+            description: `Order #${order.slug} Placed for the User: ${userInfo.name} ID: ${userInfo.id} -- Amount: ${totalAmount} -- Mode: MONEY`,
+          };
+
+          const activity = createActivity(activity_data, strapi);
+          const fcmData = {
+            title: "Order Placed",
+            body: `Your Order has been placed successfully`,
+            image:
+              order_data.order_products[0].product_variant.product.thumbnail.id,
+            description: `Your Order for ${order.id} has been placed successfully`,
+            type: notify_type.order,
+            data: `${order.id}`,
+            users_permissions_user: user_id,
+            targetType: "token",
+            targetValue: userInfo.fcmToken,
+          };
+          //create notification entry
+          const notification = await strapi.db
+            .query("api::notification.notification")
+            .create({ data: fcmData });
+          const sendNotification = await fcmNotify(
+            fcmData,
+            userInfo.fcmToken,
+            notification.id
+          );
+          //entry on txn table
+          const txn_id = await generateTransactionId();
+          const txnTable = await strapi.db
+            .query("api::transaction.transaction")
+            .create({
+              data: {
+                purpose: txn_purpose.purchase,
+                user: userInfo.id,
+                txn_type: tz_types.credit,
+                txn_id: txn_id,
+                remark: order.id,
+                mode: "MONEY",
+                amount: totalAmount,
+              },
+            });
+
+          for (const [i, prod] of products.entries()) {
+            const entryOrderProducts = await strapi.db
+              .query("api::order-product.order-product")
+              .update({
+                where: { id: orderProducts[i].id },
+                data: {
+                  status: order_status.new,
+                },
+              });
+            const updateVariantQuantity = await strapi.db
+              .query("api::product-variant.product-variant")
+              .update({
+                data: {
+                  quantity:
+                    parseInt(arrayOfProds[i].org_qty) -
+                    parseInt(products[i].quantity),
+                },
+                where: {
+                  id: products[i].product_variant_id,
+                },
+              });
+          }
+          const response_obj = {
+            id: "",
+            entity: "order",
+            amount: 0,
+            amount_paid: 0,
+            amount_due: 0,
+            currency: "INR",
+            receipt: null,
+            offer_id: null,
+            status: "created",
+            attempts: 0,
+            notes: [],
+            created_at: 1668842252,
+          };
+          return ctx.send(response_obj, 200);
+        }
       }
 
+      console.log(totalAmount);
       if (payment_mode === "PREPAID") {
         if (plan === null) {
           // totalAmount += parseFloat(globalVar.shippingPrice || 0);
-          totalAmount = commission(totalAmount);
+          // totalAmount = commission(totalAmount);
         }
         if (plan) {
           if (plan.prepaidAllowed === true) {
             // totalAmount += parseFloat(globalVar.shippingPrice);
-            totalAmount = commission(totalAmount);
+            // totalAmount = commission(totalAmount);
           } else {
             return ctx.send(
               { message: `Prepaid is not allowed in ${plan.name} plan` },
@@ -514,6 +692,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       switch (payment_gateway) {
         case payment_gateways.razorpay:
           //generate key and order
+
           var key_id = globalVar.razorpayKey;
           var key_secret = globalVar.razorpaySecret;
           var razorpayInfo = await razorpayService.createOrder(
@@ -541,7 +720,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
                   isResellerOrder: consumer.isResellerOrder,
                   payment_mode: consumer.payment_mode,
                   users_permissions_user: user_id,
-                  rzpayOrderId: razorpayInfo.id,
+                  rzpayOrderId: razorpayInfo.id || null,
                   payment_gateway: payment_gateways.razorpay,
                 },
               }
@@ -600,6 +779,11 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         case payment_gateways.phonepe:
           console.log("Inside PhonePE Gateway");
           const merchantKey = globalVar.phonepe_merchant_key;
+          const payment_instrument_type =
+            ctx.request.body.payment_instrument_type;
+          const payment_instrument_target =
+            ctx.request.body.payment_instrument_target;
+
           // const merchantKey = "de745dfb-1545-43cf-8285-0086f2a4636f";
 
           totalAmount = parseFloat(totalAmount.toFixed(2)) * 100;
@@ -610,16 +794,23 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             merchantTransactionId: `MT${new Date().getTime()}`, //auto-generate
             merchantUserId: `MUIDADMIN`, //auto-generate
             amount: totalAmount,
-            redirectUrl: "https://1e46-115-245-32-170.ngrok-free.app",
+            redirectUrl: "https://example.com",
             redirectMode: "REDIRECT",
-            callbackUrl:
-              "https://f221-115-245-32-170.ngrok-free.app/api/orders/phonepe/callback",
+            callbackUrl: "https://api.hangs.in/api/orders/phonepe/callback",
             mobileNumber: userInfo.phone
               ? userInfo.phone.slice(-10)
               : "6295612299",
             paymentInstrument: {
-              type: "PAY_PAGE",
+              type: payment_instrument_type,
+              targetApp: payment_instrument_target,
             },
+            deviceContext: {
+              deviceOS: "ANDROID",
+            },
+
+            // paymentInstrument: {
+            //   type: "PAY_PAGE",
+            // },
           };
 
           // Convert the Payload to JSON and encode as Base64
@@ -637,7 +828,8 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           const axiosConfig = {
             method: "POST",
             // url: "https://api.phonepe.com/apis/hermes/pg/v1/pay",
-            url: "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",
+            // url: "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",
+            url: "https://mercury-uat.phonepe.com/pg/v1/pay",
             headers: {
               "Content-Type": "application/json",
               "X-VERIFY": checksum,
@@ -671,10 +863,47 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
                 },
               }
             );
-            return ctx.send(responseData.data, 200);
+
+            let responseDataJSON = {
+              merchantId: globalVar.phonepe_merchant_id,
+              merchantTransactionId: `MT${new Date().getTime()}`, //auto-generate
+              merchantUserId: `MUIDADMIN`, //auto-generate
+              amount: totalAmount,
+              callbackUrl: "https://api.hangs.in/api/orders/phonepe/callback",
+              mobileNumber: userInfo.phone
+                ? userInfo.phone.slice(-10)
+                : "6295612299",
+              paymentInstrument: {
+                type: payment_instrument_type,
+                targetApp: payment_instrument_target,
+              },
+              deviceContext: {
+                deviceOS: "ANDROID",
+              },
+            };
+
+            let bufferResponse = Buffer.from(
+              JSON.stringify(responseDataJSON)
+            ).toString("base64");
+            const checksumResponse =
+              crypto
+                .createHash("sha256")
+                .update(
+                  bufferResponse + "/pg/v1/pay" + globalVar.phonepe_merchant_id,
+                  "utf8"
+                )
+                .digest("hex") + `###${globalVar.phonepe_key_index}`;
+            return ctx.send(
+              {
+                base64: bufferResponse,
+                checksum: checksumResponse,
+                apiEndPoint: "/pg/v1/pay",
+              },
+              200
+            );
           } catch (error) {
-            console.log(error.response.data);
-            return ctx.send(error.response.data, 500);
+            console.log(error);
+            return ctx.send(error, 500);
           }
         default:
           break;

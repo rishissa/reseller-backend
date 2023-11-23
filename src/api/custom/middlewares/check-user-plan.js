@@ -28,12 +28,12 @@ module.exports = (config, { strapi }) => {
             },
           },
         });
-      // console.log(userInfo);
       var recentSub;
 
       if (userInfo.subscriptions.length === 0) {
         if (userInfo.isAdmin === true) {
           ctx.request.plan = null;
+          console.log("CP1");
           return await next();
         }
         console.log("Userinfo isAdmin false");
@@ -53,8 +53,8 @@ module.exports = (config, { strapi }) => {
         if (recentSub.validTo > now) {
           //there is still valid plan going on
           //send the plan details
-          // console.log(recentSub.plan);
           ctx.request.plan = recentSub.plan;
+          console.log("CP2");
           return await next();
         }
         //no plan //free plan
@@ -63,6 +63,7 @@ module.exports = (config, { strapi }) => {
           .query("api::free-plan.free-plan")
           .findOne();
         ctx.request.plan = freePlan;
+        console.log("CP3");
         return await next();
       }
     } catch (err) {

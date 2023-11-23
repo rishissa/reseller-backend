@@ -215,9 +215,12 @@ module.exports = {
             },
           }
         );
-        arrayProductVariants.push(entries);
+
+        if (entries !== null) {
+          arrayProductVariants.push(entries);
+        }
       }
-      return arrayProductVariants;
+      return ctx.send(arrayProductVariants, 200);
     } catch (err) {
       return err;
     }
@@ -757,7 +760,7 @@ module.exports = {
               where: { id: user.id },
               data: { otp: null, otp_expiration: null, confirmed: true },
             });
-          return ctx.send({ jwt: token }, 200);
+          return ctx.send({ jwt: token, user }, 200);
         } catch (err) {
           console.log(err);
           return ctx.send(err, 400);
@@ -857,23 +860,77 @@ module.exports = {
         );
       }
 
-      const user = await strapi.plugins[
-        "users-permissions"
-      ].services.jwt.getToken(ctx);
-
+      if (browser == null) {
+        browser = await puppeteer.launch({
+          headless: "new",
+          // userDataDir: "../../../chromium_instances",
+          args: [
+            "--disable-features=IsolateOrigins",
+            "--disable-site-isolation-trials",
+            "--autoplay-policy=user-gesture-required",
+            "--disable-background-networking",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-breakpad",
+            "--disable-client-side-phishing-detection",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--disable-dev-shm-usage",
+            "--disable-domain-reliability",
+            "--disable-extensions",
+            "--disable-features=AudioServiceOutOfProcess",
+            "--disable-hang-monitor",
+            "--disable-ipc-flooding-protection",
+            "--disable-notifications",
+            "--disable-offer-store-unmasked-wallet-cards",
+            "--disable-popup-blocking",
+            "--disable-print-preview",
+            "--disable-prompt-on-repost",
+            "--disable-renderer-backgrounding",
+            "--disable-setuid-sandbox",
+            "--disable-speech-api",
+            "--disable-sync",
+            "--hide-scrollbars",
+            "--ignore-gpu-blacklist",
+            "--metrics-recording-only",
+            "--mute-audio",
+            // "--no-default-browser-check",
+            "--no-first-run",
+            "--no-pings",
+            "--no-sandbox",
+            "--no-zygote",
+            "--password-store=basic",
+            "--use-gl=swiftshader",
+            "--use-mock-keychain",
+          ],
+        });
+      }
       // var url;
       // if (!user) {
       //   url = `https://admin.hangs.in/pdf-maker/${ids}/${phone}`;
       // } else {
       //   url = `https://admin.hangs.in/singleproduct/${ids}/${phone}`;
       // }
+
       const url = `https://admin.hangs.in/pdf-maker/${ids}/${phone}`;
+      console.log("BROWSER STARTED: " + new Date().getTime());
+      const page = await browser.newPage();
+      await page.goto(url, {
+        waitUntil: "networkidle0",
+      });
+      console.log("PAGE OPENED: " + new Date().getTime());
+      await page.emulateMediaType("screen");
+
+      await page.waitForSelector("#root", { visible: true });
+
+      console.log("PDF STARTED: " + new Date().getTime());
+
       console.log(url);
 
       console.log("BROWSER STARTING: " + new Date().getTime());
 
       const outputPath = path.join(__dirname, `../../../../../pdfs/file.pdf`);
-      const page = await pdf_generator(url);
+      // const page = await pdf_generator(url);
 
       const pdf = await page.pdf({
         // path: `../../../../../pdfs/${date}.pdf`,
