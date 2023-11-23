@@ -12,7 +12,7 @@ module.exports = (config, { strapi }) => {
     const { id } = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);
-
+    console.log(ctx.request.body);
     var userInfo = await strapi
       .query("plugin::users-permissions.user")
       .findOne({

@@ -10,6 +10,7 @@ const PaymentStatus = {
 
 const OrderStatuses = {
   new: "NEW",
+  all: "ALL",
   accepted: "ACCEPTED",
   declined: "DECLINED",
   processing: "PROCESSING",
@@ -129,6 +130,7 @@ module.exports = {
   baseURL,
   getHeaders,
   domain,
+  admin_url,
   txn_purpose,
   activity_status: ActivityStatus,
   shiprocket_status: ShiprocketStatus,

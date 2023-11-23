@@ -74,7 +74,7 @@ module.exports = (config, { strapi }) => {
           break;
       }
     }
-    filters.push({ isActive: true });
+    filters.push({ isActive: true }, { category: { name: { $not: null } } });
 
     ctx.request.filters = filters;
     ctx.request.sort = sort;

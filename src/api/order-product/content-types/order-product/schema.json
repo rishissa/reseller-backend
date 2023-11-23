@@ -70,6 +70,9 @@
       "relation": "oneToOne",
       "target": "api::shiprocket-order-item.shiprocket-order-item",
       "mappedBy": "order_item"
+    },
+    "note": {
+      "type": "string"
     }
   }
 }

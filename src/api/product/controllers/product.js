@@ -151,12 +151,11 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
 
   async findAllProducts(ctx, next) {
     try {
+      console.log("Inside Find All Products");
       const pagination = ctx.request.query.pagination;
       const filters = ctx.request.filters;
       const sort = ctx.request.sort;
 
-      console.log(JSON.stringify(filters));
-      console.log(sort);
       var meta;
       var products;
 
@@ -165,7 +164,9 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
           .query("api::product.product")
           .findWithCount({
             orderBy: sort,
-            where: { $and: filters },
+            where: {
+              $and: filters,
+            },
             offset: offset,
             limit: limit,
             populate: {
@@ -179,6 +180,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         return products;
       };
 
+      //update
       if (pagination) {
         if (Object.keys(pagination).length > 0) {
           const { limit, offset } = getPagination(
@@ -453,18 +455,23 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
     const getProducts = async (offset, limit) => {
       const products = await strapi.db.query("api::product.product").findMany({
         where: {
-          $or: [
+          $and: [
+            { isActive: true },
             {
-              desc: {
-                // $startsWith: key,
-                $containsi: key,
-              },
-            },
-            {
-              name: {
-                // $startsWith: key,
-                $containsi: key,
-              },
+              $or: [
+                {
+                  desc: {
+                    // $startsWith: key,
+                    $containsi: key,
+                  },
+                },
+                {
+                  name: {
+                    // $startsWith: key,
+                    $containsi: key,
+                  },
+                },
+              ],
             },
           ],
         },

@@ -60,7 +60,7 @@ module.exports = (config, { strapi }) => {
         console.log(body_result.error);
         return (ctx.response.status = 400);
       } else {
-        await next();
+        return await next();
       }
     }
     const options = {
@@ -77,7 +77,7 @@ module.exports = (config, { strapi }) => {
       console.log(result.error);
       return (ctx.response.status = 400);
     } else {
-      await next();
+      return await next();
     }
   };
 };

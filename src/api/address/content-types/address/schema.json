@@ -14,7 +14,7 @@
   "attributes": {
     "name": {
       "type": "string",
-      "required": true,
+      "required": false,
       "unique": false
     },
     "houseNumber": {
@@ -55,6 +55,12 @@
     "area": {
       "type": "string",
       "required": true
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
     }
   }
 }

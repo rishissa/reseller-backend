@@ -23,6 +23,65 @@ const { createCoreController } = require("@strapi/strapi").factories;
 module.exports = createCoreController(
   "api::category.category",
   ({ strapi }) => ({
+    findOne: async (ctx, next) => {
+      try {
+        const pagination = ctx.request.query.pagination;
+
+        var meta;
+        var products;
+
+        const category_id = ctx.request.params.id;
+        const getProducts = async (offset, limit) => {
+          const products_list = await strapi.db
+            .query("api::category.category")
+            .findOne({
+              where: { id: category_id },
+              populate: {
+                products: {
+                  where: { isActive: true },
+                  populate: { thumbnail: true, product_variants: true },
+                },
+              },
+            });
+
+          return products_list;
+        };
+
+        if (pagination) {
+          if (Object.keys(pagination).length > 0) {
+            const { limit, offset } = getPagination(
+              pagination.page,
+              pagination.size
+            );
+            products = await getProducts(offset, limit);
+            meta = {
+              pagination: {
+                page: pagination.page ? parseInt(pagination.page) : 1,
+                pageSize: pagination.size
+                  ? parseInt(pagination.size)
+                  : products[1],
+                pageCount: Math.ceil(products[1] / limit),
+                total: products[1],
+              },
+            };
+          }
+        } else {
+          products = await getProducts(null, null);
+          meta = {
+            pagination: {
+              page: 1,
+              pageSize: products[1],
+              pageCount: 1,
+              total: products[1],
+            },
+          };
+        }
+        return ctx.send({ data: products, meta }, 200);
+      } catch (err) {
+        console.log(err);
+        return ctx.send(err, 400);
+      }
+    },
     //all categories
     allCategories: async (ctx, next) => {
       try {
@@ -108,13 +167,33 @@ module.exports = createCoreController(
             },
             products: {
               orderBy: { id: "asc" },
+              where: { isActive: true },
               populate: {
                 thumbnail: true,
                 product_variants: true,
+                sub_category: { select: ["id"] },
+                category: { select: ["id"] },
               },
             },
           },
         });
+
+        if (allProducts.products.length > 0) {
+          let category_id = allProducts.id;
+          let sub_category = allProducts.products[0].sub_category.id;
+
+          for (let i = 0; i < allProducts.products.length; i++) {
+            allProducts.products[i]["sub_category_ssa"] =
+              allProducts.products[i]["sub_category"];
+            allProducts.products[i]["sub_category_ssa"] = sub_category;
+            delete allProducts.products[i]["sub_category"];
+            allProducts.products[i]["category_ssa"] =
+              allProducts.products[i]["category"];
+            allProducts.products[i]["category_ssa"] = category_id;
+            delete allProducts.products[i]["category"];
+          }
+        }
+
         return allProducts;
       } catch (err) {
         return err;

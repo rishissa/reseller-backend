@@ -241,7 +241,6 @@ GROUP BY status;
 
       let obj3 = {};
       let lead_statuses = Object.values(lead_status);
-
       let allCount = 0;
 
       for (const status of lead_statuses) {

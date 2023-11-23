@@ -32,9 +32,10 @@ const razorpayService = require("../../custom/services/razorpay");
 
 const { userMetrics } = require("../../utils/userMetrics");
 const { productMetrics } = require("../../utils/productMetrics");
-
-const { getPagination } = require("../../utils/Pagination");
+const razorpayService = require("../../custom/services/razorpay");
 const crypto = require("crypto");
+const { getPagination } = require("../../utils/Pagination");
+const axios = require("axios");
 
 var longTime;
 
@@ -222,8 +223,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         consumer
       );
 
-      console.log("variantPrice");
-      console.log(variantPrice);
       var globalVar = ctx.request.global_var;
 
       let productVariantPrice;
@@ -1410,6 +1409,8 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
   getOrdersByStatus: async (ctx, next) => {
     try {
       const tag = ctx.request.query.tag;
+      let tag_store = ctx.request.query.store;
+
       console.log(tag);
       const pagination = ctx.request.query.pagination;
 
@@ -1424,133 +1425,36 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
         }
       }
 
-      if (pagination) {
-        console.log(pagination);
-        if (Object.keys(pagination).length > 0) {
-          const { offset, limit } = getPagination(
-            pagination.page,
-            pagination.size
-          );
-          if (tag === undefined || tag.length === 0) {
-            orders = await strapi.db
-              .query("api::order-product.order-product")
-              .findWithCount({
-                where: {
-                  $and: [
-                    {
-                      status: order_status.new,
-                    },
-                    {
-                      order: {
-                        $and: [{ id: { $not: null } }, { isPaid: true }],
-                      },
-                    },
-                  ],
-                },
-                orderBy: { id: "DESC" },
-                limit,
-                offset,
-                populate: {
-                  product_variant: {
-                    populate: {
-                      product: {
-                        populate: {
-                          thumbnail: true,
-                        },
-                      },
-                    },
-                  },
-                  order: {
-                    populate: {
-                      address: true,
-                      users_permissions_user: { populate: { avatar: true } },
-                    },
-                  },
-                },
-              });
-            meta = {
-              pagination: {
-                page:
-                  parseInt(pagination.page) < 1 ? 1 : parseInt(pagination.page),
-                pageSize: parseInt(pagination.size),
-                pageCount: Math.ceil(orders[1] / parseInt(pagination.size)),
-                total: orders[1],
-              },
-            };
-            let orderObj = {};
-            orderObj["data"] = orders[0];
-            orderObj[`new`] = orders[1];
-            return ctx.send({ data: orderObj.data, meta }, 200);
-          }
-          orders = await strapi.db
-            .query("api::order-product.order-product")
-            .findWithCount({
-              where: {
-                $and: [
-                  {
-                    status: tag.toUpperCase() || order_status.new,
-                  },
-                  {
-                    order: {
-                      $and: [{ id: { $not: null } }, { isPaid: true }],
-                    },
-                  },
-                ],
-              },
-              orderBy: { id: "DESC" },
-              limit,
-              offset,
-              populate: {
-                product_variant: {
-                  populate: {
-                    product: {
-                      populate: {
-                        thumbnail: true,
-                      },
-                    },
-                  },
-                },
-                order: {
-                  populate: {
-                    address: true,
-                    users_permissions_user: { populate: { avatar: true } },
-                  },
-                },
-              },
-            });
-          meta = {
-            pagination: {
-              page:
-                parseInt(pagination.page) < 1 ? 1 : parseInt(pagination.page),
-              pageSize: parseInt(pagination.size),
-              pageCount: Math.ceil(orders[1] / parseInt(pagination.size)),
-              total: orders[1],
-            },
-          };
-          let orderObj = {};
-          orderObj["data"] = orders[0];
-          orderObj[`${tag}`] = orders[1];
-          return ctx.send({ data: orderObj.data, meta }, 200);
+      const { id } = await strapi.plugins[
+        "users-permissions"
+      ].services.jwt.getToken(ctx);
+      const getOrders = async (offset, limit, tag) => {
+        if (tag === undefined || tag === null || tag === "all") {
+          tag = { status: { $in: Object.values(order_status) } };
+        } else {
+          tag = { status: tag.toUpperCase() };
         }
-      }
-      if (tag === undefined || tag.length === 0) {
-        orders = await strapi.db
+        const listOrders = await strapi.db
           .query("api::order-product.order-product")
           .findWithCount({
             where: {
               $and: [
-                {
-                  status: tag.toUpperCase() || order_status.new,
-                },
+                tag,
                 {
                   order: {
-                    $and: [{ id: { $not: null } }, { isPaid: true }],
+                    $and: [
+                      { id: { $not: null } },
+                      !tag_store
+                        ? { isPaid: true }
+                        : { users_permissions_user: { id: id } },
+                      { isPaid: true },
+                    ],
                   },
                 },
               ],
             },
             orderBy: { id: "DESC" },
-            limit: 25,
+            limit,
             offset,
             populate: {
               product_variant: {
@@ -1570,53 +1474,37 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               },
             },
           });
-        meta = {
-          pagination: {
-            page: 0,
-            pageSize: 25,
-            pageCount: Math.ceil(orders[1]),
-            total: orders[1],
-          },
-        };
-        let orderObj = {};
-        orderObj["data"] = orders[0];
-        orderObj[`new`] = orders[1];
-        return ctx.send({ data: orderObj.data, meta }, 200);
+
+        return listOrders;
+      };
+
+      console.log(tag_store);
+      if (pagination) {
+        console.log(pagination);
+        if (Object.keys(pagination).length > 0) {
+          const { offset, limit } = getPagination(
+            pagination.page,
+            pagination.size
+          );
+
+          orders = await getOrders(offset, limit, tag);
+
+          meta = {
+            pagination: {
+              page:
+                parseInt(pagination.page) < 1 ? 1 : parseInt(pagination.page),
+              pageSize: parseInt(pagination.size),
+              pageCount: Math.ceil(orders[1] / parseInt(pagination.size)),
+              total: orders[1],
+            },
+          };
+          let orderObj = {};
+          orderObj["data"] = orders[0];
+          orderObj[`${tag}`] = orders[1];
+          return ctx.send({ data: orderObj.data, meta }, 200);
+        }
       }
-      orders = await strapi.db
-        .query("api::order-product.order-product")
-        .findWithCount({
-          where: {
-            $and: [
-              {
-                status: tag.toUpperCase() || order_status.new,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-          orderBy: { id: "DESC" },
-          populate: {
-            product_variant: {
-              populate: {
-                product: {
-                  populate: {
-                    thumbnail: true,
-                  },
-                },
-              },
-            },
-            order: {
-              populate: {
-                address: true,
-                users_permissions_user: { populate: { avatar: true } },
-              },
-            },
-          },
-        });
+      orders = await getOrders(null, null, tag);
       meta = {
         pagination: {
           page: 1,
@@ -1634,7 +1522,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       return ctx.send(err, 400);
     }
   },
-
   payoutReseller: async (ctx, next) => {
     try {
       const order_id = ctx.request.body.order_product_id;

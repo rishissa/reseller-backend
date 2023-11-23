@@ -46,6 +46,6 @@ module.exports = {
   commission: addCommission,
   createActivity,
   generateOrderUid: uid,
-  shippingPriceCalculation,
   generateOTP,
+  shippingPriceCalculation,
 };

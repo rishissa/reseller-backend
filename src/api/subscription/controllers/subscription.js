@@ -59,7 +59,10 @@ module.exports = createCoreController(
 
     async create(ctx, next) {
       try {
+        console.log("Inside Subscriptions Create");
         const plan_id = ctx.request.body.plan;
+        console.log(ctx.request.body);
+        console.log(plan_id);
         const data = ctx.request.body;
         const user_id = ctx.request.user_id;
         const userId = ctx.request.body.userId;

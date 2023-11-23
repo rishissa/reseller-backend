@@ -13,7 +13,7 @@ module.exports = (config, { strapi }) => {
     //check if there is any ongoing subscription of the user
 
     const subs = ctx.request.userInfo;
-
+    console.log(subs);
     var recentSub;
     // console.log(subs);
     if (subs.subscriptions && subs.subscriptions.length > 0) {
@@ -37,14 +37,14 @@ module.exports = (config, { strapi }) => {
       ctx.request.user = subs;
       ctx.request.subscriptionOver = true;
       ctx.request.recentSub = recentSub;
-      await next();
+      return await next();
     } else {
       // const msg = `Your ${recentSub.name} is valid till ${recentSub.validTo}`;
       console.log("Subscription is not over");
       ctx.request.user = subs;
       ctx.request.recentSub = recentSub;
       ctx.request.subscriptionOver = false;
-      await next();
+      return await next();
     }
 
     //check if the recent sub is over or not
