@@ -23,7 +23,6 @@
     },
     "quantity": {
       "type": "integer",
-      "required": true,
       "default": 0
     },
     "premiumPricing": {

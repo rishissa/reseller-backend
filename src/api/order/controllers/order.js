@@ -28,14 +28,12 @@ const Razorpay = require("razorpay");
 const { tz_types, tz_reasons } = require("../../utils/WalletConstants");
 const { fcmNotify } = require("../../utils/fcmNotify");
 const axios = require("axios");
-const razorpayService = require("../../custom/services/razorpay");
 
 const { userMetrics } = require("../../utils/userMetrics");
 const { productMetrics } = require("../../utils/productMetrics");
 const razorpayService = require("../../custom/services/razorpay");
 const crypto = require("crypto");
 const { getPagination } = require("../../utils/Pagination");
-const axios = require("axios");
 
 var longTime;
 
