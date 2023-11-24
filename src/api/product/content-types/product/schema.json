@@ -18,13 +18,11 @@
     },
     "name": {
       "type": "string",
-      "required": true,
-      "minLength": 4
+      "required": true
     },
     "desc": {
       "type": "text",
-      "required": true,
-      "minLength": 10
+      "required": true
     },
     "thumbnail": {
       "type": "media",

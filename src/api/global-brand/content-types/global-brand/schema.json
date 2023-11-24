@@ -40,6 +40,9 @@
     },
     "about_us": {
       "type": "richtext"
+    },
+    "domain": {
+      "type": "string"
     }
   }
 }
