@@ -184,7 +184,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
     try {
       let arrayOfProds = ctx.request.arrayOfProds;
       var orderProducts = [];
-      var totalCost = 0;
+      let totalResellerMargin = 0;
 
       var payment_gateway = ctx.request.payment_gateway;
       //finding all the products
@@ -241,7 +241,9 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               // sellingPrice: isResellerOrder == true ? sellingPrice : null,
             },
           });
-
+        totalResellerMargin += consumer.isResellerOrder
+          ? products[i].sellingPrice
+          : 0;
         //calculate shipping price
         //if shippingPrice_type === price, then simply add the price
         //if percentage, then add the percentage price from the productVariant price and sum up the totalAmount
@@ -687,45 +689,114 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       }
 
       switch (payment_gateway) {
+        // case payment_gateways.razorpay:
+        //   //generate key and order
+
+        //   var key_id = globalVar.razorpayKey;
+        //   var key_secret = globalVar.razorpaySecret;
+        //   var razorpayInfo = await razorpayService.createOrder(
+        //     key_id,
+        //     key_secret,
+        //     totalAmount
+        //   );
+
+        //   if (razorpayInfo.status == "created") {
+        //     //TXN IS STARTED
+        //     //Create Order
+        //     longTime = "order_" + new Date().getTime();
+
+        //     const order_data = await strapi.entityService.create(
+        //       "api::order.order",
+        //       {
+        //         data: {
+        //           slug: generateOrderUid(),
+        //           order_products: [...orderProducts],
+        //           address: consumer.addressID,
+        //           status: order_status.new,
+        //           consumerName: consumer.conName || null,
+        //           consumerPhone: consumer.conPhone || null,
+        //           consumerEmail: consumer.conEmail || null,
+        //           isResellerOrder: consumer.isResellerOrder,
+        //           payment_mode: consumer.payment_mode,
+        //           users_permissions_user: user_id,
+        //           rzpayOrderId: razorpayInfo.id || null,
+        //           payment_gateway: payment_gateways.razorpay,
+        //         },
+        //       }
+        //     );
+
+        //     // razorpayInfo = Object.assign({ order_slug: order.slug }, razorpayInfo);
+        //     return ctx.send(razorpayInfo, 200);
+        //   }
+        //   break;
         case payment_gateways.razorpay:
           //generate key and order
+          const order_body = {
+            totalAmount: totalAmount,
+            payment_mode,
+            payout_required:
+              consumer.isResellerOrder === true &&
+              consumer.payment_mode === payment_methods.cod
+                ? true
+                : false,
+            totalResellerMargin: Math.abs(totalResellerMargin - totalAmount),
+            // order_id:
+          };
 
-          var key_id = globalVar.razorpayKey;
-          var key_secret = globalVar.razorpaySecret;
-          var razorpayInfo = await razorpayService.createOrder(
-            key_id,
-            key_secret,
-            totalAmount
-          );
-
-          if (razorpayInfo.status == "created") {
-            //TXN IS STARTED
-            //Create Order
-            longTime = "order_" + new Date().getTime();
-
-            const order_data = await strapi.entityService.create(
-              "api::order.order",
+          const personalID = await strapi
+            .query("plugin::users-permissions.user")
+            .findOne({
+              where: { role: { name: "Admin" } },
+              select: ["personal_id"],
+            });
+          // const personalID = ctx.request.headers["x-verify"];
+          if (!personalID.personal_id) {
+            return ctx.send(
+              { message: "No VerifyID passed in the header" },
+              400
+            );
+          }
+          console.log(personalID.personal_id);
+          let send_razorpay_request;
+          try {
+            send_razorpay_request = await axios.post(
+              `${process.env.RZP_WRAPPER_URL}/orders/razorpay`,
+              order_body,
               {
-                data: {
-                  slug: generateOrderUid(),
-                  order_products: [...orderProducts],
-                  address: consumer.addressID,
-                  status: order_status.new,
-                  consumerName: consumer.conName || null,
-                  consumerPhone: consumer.conPhone || null,
-                  consumerEmail: consumer.conEmail || null,
-                  isResellerOrder: consumer.isResellerOrder,
-                  payment_mode: consumer.payment_mode,
-                  users_permissions_user: user_id,
-                  rzpayOrderId: razorpayInfo.id || null,
-                  payment_gateway: payment_gateways.razorpay,
+                headers: {
+                  "X-VERIFY": personalID.personal_id,
                 },
               }
             );
 
-            // razorpayInfo = Object.assign({ order_slug: order.slug }, razorpayInfo);
-            return ctx.send(razorpayInfo, 200);
+            // console.log(send_razorpay_request.data);
+            if (send_razorpay_request.data.status === "created") {
+              const order_data = await strapi.entityService.create(
+                "api::order.order",
+                {
+                  data: {
+                    slug: generateOrderUid(),
+                    order_products: [...orderProducts],
+                    address: consumer.addressID,
+                    status: order_status.new,
+                    consumerName: consumer.conName || null,
+                    consumerPhone: consumer.conPhone || null,
+                    consumerEmail: consumer.conEmail || null,
+                    isResellerOrder: consumer.isResellerOrder,
+                    payment_mode: consumer.payment_mode,
+                    users_permissions_user: user_id,
+                    rzpayOrderId: send_razorpay_request.data.id,
+                    payment_gateway: payment_gateways.razorpay,
+                  },
+                }
+              );
+              return ctx.send(send_razorpay_request.data, 200);
+            }
+          } catch (err) {
+            console.log(err.response);
+            return ctx.send(err.data, err.status);
           }
+
           break;
 
         case payment_gateways.cashfree:

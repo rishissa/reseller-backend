@@ -231,6 +231,8 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
             "desc",
             "yt_video_link",
             "cod_enabled",
+            "shipping_price",
+            "shipping",
           ],
           populate: {
             gallery: true,

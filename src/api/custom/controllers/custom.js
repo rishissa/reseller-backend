@@ -34,6 +34,9 @@ const {
   resellerHoldProfit,
   totalUserPrepaidOrders,
   totalUserCODOrders,
+  totalOrders,
+  totalLeads,
+  getReturnOrdersCount,
 } = require("../../utils/StatsHelper");
 const { domain, admin_url } = require("../../../../config/constants");
 const { faker } = require("@faker-js/faker");
@@ -79,115 +82,313 @@ var longTime;
 
 module.exports = {
   webHook: async (ctx, next) => {
-    // console.log(JSON.stringify(ctx.request.body));
-    console.log(ctx.request.body);
-    try {
-      var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
+    console.log("Inside Razorpay Webhooks");
+    const paymentDetails = ctx.request.body;
 
-      var paymentCaptured =
-        paymentDetails.event === "payment.captured" ? true : false;
-      let event = paymentDetails.event;
-      let payment_method_rzp = paymentDetails.payload.payment.entity.method;
-      console.log("payment_method_rzp", payment_method_rzp);
-      const secret = "razor@123";
-      console.log("Inside WebHooks");
-      // decryptions
-      const shasum = crypto.createHmac("sha256", secret);
-      shasum.update(JSON.stringify(ctx.request.body));
-      const digest = shasum.digest("hex");
+    const string_pay_details = JSON.stringify(paymentDetails);
+    console.log(string_pay_details);
+    let payObject;
+    let method;
 
-      // razirpay order body
-      const rzpOrder = ctx.request.body;
-
-      if (digest === ctx.request.headers["x-razorpay-signature"]) {
-        let order;
-        let type;
-        const getOrder = await strapi.db.query("api::order.order").findOne({
-          where: {
-            rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
-          },
-          select: ["*"],
-        });
-        if (getOrder) {
-          order = getOrder;
-          type = "order";
-        } else {
-          const getSubs = await strapi.db
-            .query("api::subscription.subscription")
-            .findOne({
-              where: {
-                orderId: paymentDetails.payload.payment.entity.order_id,
-              },
-            });
-          order = getSubs;
-          type = "subs";
-        }
-
-        if (order === null) return ctx.send({ error: "Invalid Request" }, 400);
-
-        var entryPaymentLog;
-        var paymentData = await getPaymentData({ paymentDetails, order, type });
-
-        switch (event) {
-          case "payment.authorized":
-            console.log("Payment Authorized", event);
-            paymentData.status = PaymentStatus.authorized;
-            entryPaymentLog = await strapi.db
-              .query("api::payment-log.payment-log")
-              .create({
-                data: paymentData,
-              });
-            break;
-          case "payment.captured":
-            console.log("Payment Captured", event);
-            if (order.isPaid === false) {
-              if (type === "order") {
-                const entry = await strapi.db.query("api::order.order").update({
-                  where: {
-                    $and: [
-                      {
-                        rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
-                      },
-                      { isPaid: false },
-                    ],
-                  },
-                  data: {
-                    isPaid: true,
-                    paymentID: rzpOrder.payload.payment.entity.id,
-                    paymentSignature:
-                      ctx.request.headers["x-razorpay-signature"],
-                  },
-                });
-              }
-
-              paymentData.status = PaymentStatus.captured;
-              entryPaymentLog = await strapi.db
-                .query("api::payment-log.payment-log")
-                .create({
-                  data: paymentData,
-                });
-            }
-            break;
-          case "payment.failed":
-            paymentData.status = PaymentStatus.failed;
-            const entryPaymentFailed = await strapi.db
-              .query("api::payment-log.payment-log")
-              .create({
-                data: paymentData,
-              });
-            console.log("Payment Failed", event);
-            break;
-          default:
-            break;
-        }
-        return ctx.send({ message: "Webhooks executed Successfully" }, 200);
+    if (paymentDetails) {
+      if (paymentDetails.payload.payment) {
+        method = paymentDetails.payload.payment.entity.method;
       } else {
-        ctx.send({ message: "Request is Not Legit" }, 400);
+        method = null;
       }
-    } catch (err) {
-      console.log(err);
-      ctx.send({ message: "Request is Not Legit" }, 500);
+    } else {
+      return;
     }
+
+    console.log(JSON.stringify(paymentDetails));
+    switch (method) {
+      case "upi":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: null,
+          card_number: null,
+          bank: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      case "card":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: paymentDetails.payload.payment.entity.card.type,
+          card_number:
+            "**** **** **** " +
+            paymentDetails.payload.payment.entity.card.last4,
+          network: paymentDetails.payload.payment.entity.card.network,
+          bank: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      case "netbanking":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: null,
+          card_number: null,
+          network: null,
+          bank: paymentDetails.payload.payment.entity.bank,
+          wallet: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      default:
+        break;
+    }
+
+    switch (paymentDetails.event) {
+      case "payment.authorized":
+        console.log("Payment Authorized");
+        // const responseData1 = await axios.post(
+        //   "https://243f-115-245-32-169.ngrok-free.app/api/razorpay/webhooks",
+        //   JSON.stringify(paymentDetails),
+        //   {
+        //     headers: {
+        //       "x-razorpay-signature":
+        //         ctx.request.headers["x-razorpay-signature"],
+        //     },
+        //   }
+        // );
+        break;
+
+      case "payment.captured":
+        console.log("Payment Captured");
+
+        const responseData2 = await axios.post(
+          `${process.env.RZP_WRAPPER_URL}/razorpay/webhooks`,
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
+
+        if (responseData2.data.verified === true) {
+          console.log("Payment Verified by Webhooks");
+        }
+        break;
+
+      case "payment.failed":
+        console.log("Payment Failed");
+        const responseData3 = await axios.post(
+          `${process.env.RZP_WRAPPER_URL}/razorpay/webhooks`,
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
+
+        break;
+
+      case "settlement.processed":
+        console.log("Settlement Processed");
+        const responseData4 = await axios.post(
+          `${process.env.RZP_WRAPPER_URL}/api/razorpay/webhooks`,
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
+
+      default:
+        break;
+    }
+
+    return ctx.send("Success", 200);
+    // try {
+    //   var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
+    //   var paymentCaptured =
+    //     paymentDetails.event === "payment.captured" ? true : false;
+    //   let event = paymentDetails.event;
+    //   let payment_method_rzp = paymentDetails.payload.payment.entity.method;
+    //   console.log("Inside WebHooks");
+    //   const secret = "razor@123";
+    //   const shasum = crypto.createHmac("sha256", secret);
+    //   shasum.update(JSON.stringify(ctx.request.body));
+    //   const digest = shasum.digest("hex");
+    //   const rzpOrder = JSON.stringify(ctx.request.body);
+
+    //   if (digest === ctx.request.headers["x-razorpay-signature"]) {
+    //     const order = await strapi.db
+    //       .query("api::order-product.order-product")
+    //       .findOne({
+    //         where: {
+    //           rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
+    //         },
+    //       });
+
+    //     var entryPaymentLog;
+    //     var paymentData;
+    //     if (payment_method_rzp === payment_method.UPI) {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         vpa: paymentDetails.payload.payment.entity.vpa,
+    //         order: [order.id],
+    //       };
+    //     }
+    //     if (payment_method_rzp === payment_method.NET_BANKING) {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         bank: paymentDetails.payload.payment.entity.bank,
+    //         order: [order.id],
+    //       };
+    //     } else {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         cardId: paymentDetails.payload.payment.entity.card_id,
+    //         cardNumber:
+    //           "**** **** **** " +
+    //           paymentDetails.payload.payment.entity.card.last4,
+    //         cardType: paymentDetails.payload.payment.entity.card.type,
+    //         cardNetwork: paymentDetails.payload.payment.entity.card.network,
+    //         order: [order.id],
+    //       };
+    //     }
+    //     switch (event) {
+    //       case "payment.authorized":
+    //         console.log("Payment Authorized", event);
+    //         console.log(order);
+    //         paymentData.status = PaymentStatus.captured;
+    //         entryPaymentLog = await strapi.entityService.create(
+    //           "api::payment-log.payment-log",
+    //           {
+    //             data: paymentData,
+    //           }
+    //         );
+    //         break;
+    //       case "payment.captured":
+    //         console.log("Payment Captured", event);
+    //         if (order.isPaid === false) {
+    //           console.log(entryPaymentLog);
+    //           const entry = await strapi.db
+    //             .query("api::order-product.order-product")
+    //             .update({
+    //               where: {
+    //                 rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
+    //               },
+    //               data: {
+    //                 isPaid: true,
+    //                 paymentID: rzpOrder.payload.payment.entity.id,
+    //                 paymentSignature:
+    //                   ctx.request.headers["x-razorpay-signature"],
+    //               },
+    //             });
+    //         }
+    //         //role based operations
+    //         //firebase otp verification
+    //         //email templating
+    //         //webhook complete testing
+    //         break;
+    //       case "payment.failed":
+    //         const entryPaymentFailed = await strapi.entityService.create(
+    //           "api::payment-log.payment-log",
+    //           {
+    //             data: paymentData,
+    //           }
+    //         );
+    //         console.log("Payment Failed", event);
+    //         break;
+    //       default:
+    //         break;
+    //     }
+    //   } else {
+    //     ctx.send(
+    //       {
+    //         message: "Request is Not Legit",
+    //       },
+    //       400
+    //     );
+    //   }
+    //   ctx.send(
+    //     {
+    //       message: "Webhooks executed Successfully",
+    //     },
+    //     200
+    //   );
+    // } catch (err) {
+    //   // else {
+    //   ctx.send(
+    //     {
+    //       message: "Request is Not Legit",
+    //     },
+    //     500
+    //   );
+    //   // }
+    //   // return err;
+    // }
   },
 
   selectedProductVariant: async (ctx, next) => {
@@ -822,25 +1023,28 @@ module.exports = {
     try {
       const totalUsers = await getUsersCount(strapi);
       const subscribers = await getSubscribersCount(strapi);
-      const codOrders = await getCODOrdersCount(strapi);
-      const prepaidOrders = await getPrepaidOrdersCount(strapi);
-      const walletOrders = await getWalletOrdersCount(strapi);
+      // const codOrders = await getCODOrdersCount(strapi);
+      // const prepaidOrders = await getPrepaidOrdersCount(strapi);
+      // const walletOrders = await getWalletOrdersCount(strapi);
       const products = await getProductsCount(strapi);
       const totalRevenue = await getTotalRevenue(strapi);
+      const total_orders = await totalOrders(strapi);
+      const total_leads = await totalLeads(strapi);
+      const total_return_orders = await getReturnOrdersCount(strapi);
 
-      const totalOrders =
-        parseInt(codOrders) + parseInt(prepaidOrders) + parseInt(walletOrders);
+      // const totalOrders =
+      //   parseInt(codOrders) + parseInt(prepaidOrders) + parseInt(walletOrders);
 
       return ctx.send(
         {
           totalRevenue,
           totalUsers,
-          totalOrders,
+          total_orders,
+          total_leads,
+          total_return_orders,
           products,
           subscribers,
-          codOrders,
-          prepaidOrders,
-          walletOrders,
+          shares: 0,
         },
         200
       );

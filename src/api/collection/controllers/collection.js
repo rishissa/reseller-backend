@@ -73,6 +73,7 @@ module.exports = createCoreController(
               populate: {
                 thumbnail: true,
                 products: {
+                  where: { isActive: true },
                   populate: {
                     thumbnail: true,
                     product_variants: true,

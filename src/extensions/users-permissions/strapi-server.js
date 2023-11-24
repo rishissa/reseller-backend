@@ -218,31 +218,45 @@ module.exports = (plugin) => {
             },
           },
         },
+        admin_subscriptions: true,
       },
     });
     var recentSub;
-    //check active subscription
-    if (subs.subscriptions.length > 0) {
-      recentSub = subs.subscriptions.reduce((acc, curr) => {
-        return curr.id > acc.id ? curr : acc;
-      });
-      let now = new Date();
-      let formattedDate = formatDate(now);
-      if (recentSub.validTo < formattedDate) {
-        //subscription is over
-        const updateUser = await strapi
-          .query("plugin::users-permissions.user")
-          .update({
-            where: { id: id },
-            data: {
-              isPremium: false,
-            },
-          });
+    if (subs.role.name === "Admin") {
+      if (subs.admin_subscriptions.length > 0) {
+        // for (const it of subs.admin_subscriptions) {
+        //   if (new Date(it.validTo) > new Date()) {
+        //     recentSub = it;
+        //   }
+        // }
+        recentSub = subs.admin_subscriptions.reduce((acc, curr) => {
+          return curr.id > acc.id ? curr : acc;
+        });
+      }
+    } else {
+      if (subs.subscriptions.length > 0) {
+        recentSub = subs.subscriptions.reduce((acc, curr) => {
+          return curr.id > acc.id ? curr : acc;
+        });
+        let now = new Date();
+        let formattedDate = formatDate(now);
+        if (recentSub.validTo < formattedDate) {
+          //subscription is over
+          const updateUser = await strapi
+            .query("plugin::users-permissions.user")
+            .update({
+              where: { id: id },
+              data: {
+                isPremium: false,
+              },
+            });
+        }
       }
     }
+    //check active subscription
 
     await me(ctx);
-    Object.assign(ctx.response.body, { subscription: recentSub });
+    Object.assign(ctx.response.body, { subscription: recentSub || null });
   };
 
   const findAll = plugin.controllers.user.find;
