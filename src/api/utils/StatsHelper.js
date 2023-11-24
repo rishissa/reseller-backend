@@ -94,7 +94,9 @@ const totalOrders = async (strapi) => {
 };
 const getProductsCount = async (strapi) => {
   try {
-    const productsCount = await strapi.db.query("api::product.product").count();
+    const productsCount = await strapi.db
+      .query("api::product.product")
+      .count({ where: { isActive: true } });
     return productsCount;
   } catch (err) {
     console.log(err);

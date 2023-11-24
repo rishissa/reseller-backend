@@ -49,6 +49,7 @@ module.exports = (plugin) => {
   //Handle User Update
   const update = plugin.controllers.user.update;
   plugin.controllers.user.update = async (ctx) => {
+    console.log(ctx.request.body);
     const { id } = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);
@@ -210,6 +211,7 @@ module.exports = (plugin) => {
       where: { id: id },
       populate: {
         role: true,
+        metric: true,
         subscriptions: {
           // where: { paymentId: { $not: { $null: true } } },
           populate: {

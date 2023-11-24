@@ -41,7 +41,8 @@
         "INSTAGRAM",
         "SOCIAL_SELLER_WEBSITE",
         "YOUTUBE_CHANNEL",
-        "APP"
+        "APP",
+        "WEBSITE"
       ]
     },
     "user": {

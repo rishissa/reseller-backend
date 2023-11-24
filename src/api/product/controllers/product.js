@@ -23,6 +23,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       const { id, isAdmin = false } = await strapi.plugins[
         "users-permissions"
       ].services.jwt.getToken(ctx);
+
       console.log("Into Changing Defaults Products API");
       const variants = ctx.request.body.data.variants;
       ctx.request.body.data.slug = genProdSlug(ctx.request.body.data.name);
@@ -315,6 +316,7 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
             fields: ["name", "slug", "id", "desc"],
             populate: {
               thumbnail: true,
+              gallery: true,
               product_variants: true,
               category: true,
               sub_category: true,

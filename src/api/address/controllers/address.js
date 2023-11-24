@@ -24,7 +24,7 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
       addressLine2,
       user,
     } = ctx.request.body;
-
+    console.log(ctx.request.body);
     try {
       if (
         ctx.request &&
@@ -51,7 +51,7 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
           userID = id;
         }
       }
-
+      console.log(userID);
       const entry = await strapi.entityService.create("api::address.address", {
         data: {
           name: name,

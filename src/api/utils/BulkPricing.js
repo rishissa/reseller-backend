@@ -32,6 +32,9 @@ const bulkPriceVariants = async (plan, user, products, consumer_body) => {
               parseFloat(prod.quantity) * parseFloat(prod.price);
           } else {
             totalAmount = 0;
+            variantPrice[prod.id] =
+              parseFloat(prod.quantity) * parseFloat(prod.price);
+
             return { totalAmount, variantPrice };
           }
         }

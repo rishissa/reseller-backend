@@ -11,13 +11,13 @@ module.exports = (config, { strapi }) => {
   return async (ctx, next) => {
     strapi.log.info("In lead-body-validation middleware.");
     const body = ctx.request.body.data;
-
     const sources = [
       "WHATSAPP",
       "INSTAGRAM",
       "SOCIAL_SELLER_WEBSITE",
       "YOUTUBE_CHANNEL",
       "APP",
+      "WEBSITE",
     ];
 
     if (!sources.includes(body.source)) {

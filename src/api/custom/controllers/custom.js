@@ -419,9 +419,12 @@ module.exports = {
             },
           }
         );
-        arrayProductVariants.push(entries);
+
+        if (entries !== null) {
+          arrayProductVariants.push(entries);
+        }
       }
-      return arrayProductVariants;
+      return ctx.send(arrayProductVariants, 200);
     } catch (err) {
       return err;
     }
@@ -1283,6 +1286,112 @@ module.exports = {
     }
   },
 
+  generateOrderDetailsPdfCatalogue: async (ctx, next) => {
+    const path = require("path");
+    try {
+      const parts = ctx.request.params.id.split("_");
+      const ids = parts.filter((n) => n).join("_");
+      const regex = /^[\w_]+$/;
+      if (regex.test(ids) === false) {
+        return ctx.send(
+          { message: "IDs with only underscores is allowed" },
+          400
+        );
+      }
+      const url = `${admin_url}/pdf-maker/${ids}/${phone}`;
+      console.log(url);
+
+      console.log("BROWSER STARTING: " + new Date().getTime());
+
+      console.log(browser);
+
+      const outputPath = path.join(__dirname, `../../../../../files/file.pdf`);
+      if (browser == null) {
+        browser = await puppeteer.launch({
+          headless: "new",
+          // userDataDir: "../../../chromium_instances",
+          args: [
+            "--disable-features=IsolateOrigins",
+            "--disable-site-isolation-trials",
+            "--autoplay-policy=user-gesture-required",
+            "--disable-background-networking",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-breakpad",
+            "--disable-client-side-phishing-detection",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--disable-dev-shm-usage",
+            "--disable-domain-reliability",
+            "--disable-extensions",
+            "--disable-features=AudioServiceOutOfProcess",
+            "--disable-hang-monitor",
+            "--disable-ipc-flooding-protection",
+            "--disable-notifications",
+            "--disable-offer-store-unmasked-wallet-cards",
+            "--disable-popup-blocking",
+            "--disable-print-preview",
+            "--disable-prompt-on-repost",
+            "--disable-renderer-backgrounding",
+            "--disable-setuid-sandbox",
+            "--disable-speech-api",
+            "--disable-sync",
+            "--hide-scrollbars",
+            "--ignore-gpu-blacklist",
+            "--metrics-recording-only",
+            "--mute-audio",
+            // "--no-default-browser-check",
+            "--no-first-run",
+            "--no-pings",
+            "--no-sandbox",
+            "--no-zygote",
+            "--password-store=basic",
+            "--use-gl=swiftshader",
+            "--use-mock-keychain",
+          ],
+        });
+      }
+
+      // Create a new page
+      console.log("BROWSER STARTED: " + new Date().getTime());
+
+      const page = await browser.newPage();
+      await page.goto(url, {
+        waitUntil: "networkidle0",
+      });
+      console.log("PAGE OPENED: " + new Date().getTime());
+      await page.emulateMediaType("screen");
+
+      await page.waitForSelector("#root", { visible: true });
+
+      console.log("PDF STARTED: " + new Date().getTime());
+      // const page = await pdf_generator(url);
+      const pdf = await page.pdf({
+        path: outputPath,
+        margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
+        printBackground: true,
+        format: "A4",
+      });
+
+      console.log("PDF COMPLETE: " + new Date().getTime());
+      console.log(pdf);
+      if (pdf) {
+        const filePath = outputPath;
+        const filename = path.basename(filePath);
+        // const pdfBuffer = pdf;
+        logDownloadEvent(ctx);
+        ctx.attachment(filename);
+        // browser = null;
+        ctx.type = "application/octet-stream";
+        ctx.body = fs.createReadStream(filePath);
+        // return ctx.send(pdf, 200);
+      }
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
   getRecentOrders: async (ctx, next) => {
     try {
       const recentOrders = await strapi
@@ -1314,7 +1423,6 @@ module.exports = {
   resellerWithdraw: async (ctx, netx) => {
     try {
       const body = ctx.request.body;
-      console.log(body);
       const { id } = await strapi.plugins[
         "users-permissions"
       ].services.jwt.getToken(ctx);

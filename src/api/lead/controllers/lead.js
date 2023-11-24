@@ -113,6 +113,7 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
       return ctx.send(err, 400);
     }
   },
+
   async assignLead(ctx, next) {
     try {
       const id = ctx.request.params.id;

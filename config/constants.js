@@ -1,6 +1,6 @@
-const domain = "https://api.sumeetonline.in";
+const domain = "https://api.arham-watches.hangs.in";
 const baseURL = domain + "/api";
-const admin_url = "https://admin.sumeetonline.in";
+const admin_url = "https://admin.arham-watches.hangs.in";
 
 const PaymentStatus = {
   authorized: "AUTHORIZED",
