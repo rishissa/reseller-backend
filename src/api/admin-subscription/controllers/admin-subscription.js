@@ -83,6 +83,7 @@ module.exports = createCoreController(
                 validTo: body.validTo,
                 validFrom: body.validFrom,
                 users_permissions_user: id,
+                orderId: send_razorpay_request.data.id,
               },
             });
           return ctx.send(send_razorpay_request.data, 200);
@@ -112,6 +113,15 @@ module.exports = createCoreController(
               },
             }
           );
+          if (verify_callback.status === 200) {
+            //update
+            const updateSub = await strapi.db
+              .query("api::admin-subscription.admin-subscription")
+              .update({
+                where: { orderId: razorpay_order_id },
+                data: { paymentId: razorpay_payment_id },
+              });
+          }
           return ctx.send(verify_callback.data, 200);
         } catch (err) {
           console.log(err.response);
