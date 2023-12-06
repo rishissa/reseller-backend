@@ -26,6 +26,8 @@ module.exports = (config, { strapi }) => {
           },
         }
       );
+      console.log("variant");
+      console.log(variant);
       if (variant.product.isActive === false) {
         return ctx.send(
           {

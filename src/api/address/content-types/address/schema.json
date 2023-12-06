@@ -60,7 +60,8 @@
       "type": "string"
     },
     "phone": {
-      "type": "string"
+      "type": "string",
+      "required": true
     }
   }
 }

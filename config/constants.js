@@ -1,6 +1,6 @@
-const domain = "https://api.arham-watches.hangs.in";
+const domain = "https://api.arhamwatches.com";
 const baseURL = domain + "/api";
-const admin_url = "https://admin.arham-watches.hangs.in";
+const admin_url = "https://admin.arhamwatches.com";
 
 const PaymentStatus = {
   authorized: "AUTHORIZED",
@@ -13,6 +13,7 @@ const OrderStatuses = {
   all: "ALL",
   accepted: "ACCEPTED",
   declined: "DECLINED",
+  cancelled: "CANCELLED",
   processing: "PROCESSING",
   intransit: "INTRANSIT",
   out_for_delivery: "OUT_FOR_DELIVERY",

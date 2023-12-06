@@ -184,7 +184,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
     try {
       let arrayOfProds = ctx.request.arrayOfProds;
       var orderProducts = [];
-      var totalCost = 0;
+      let totalResellerMargin = 0;
 
       var payment_gateway = ctx.request.payment_gateway;
       //finding all the products
@@ -241,7 +241,9 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               // sellingPrice: isResellerOrder == true ? sellingPrice : null,
             },
           });
-
+        totalResellerMargin += consumer.isResellerOrder
+          ? products[i].sellingPrice
+          : 0;
         //calculate shipping price
         //if shippingPrice_type === price, then simply add the price
         //if percentage, then add the percentage price from the productVariant price and sum up the totalAmount
@@ -689,43 +691,72 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       switch (payment_gateway) {
         case payment_gateways.razorpay:
           //generate key and order
+          const order_body = {
+            totalAmount: totalAmount,
+            payment_mode,
+            payout_required:
+              consumer.isResellerOrder === true &&
+              consumer.payment_mode === payment_methods.cod
+                ? true
+                : false,
+            totalResellerMargin: Math.abs(totalResellerMargin - totalAmount),
+            // order_id:
+          };
 
-          var key_id = globalVar.razorpayKey;
-          var key_secret = globalVar.razorpaySecret;
-          var razorpayInfo = await razorpayService.createOrder(
-            key_id,
-            key_secret,
-            totalAmount
-          );
+          const personalID = await strapi
+            .query("plugin::users-permissions.user")
+            .findOne({
+              where: { role: { name: "Admin" } },
+              select: ["personal_id"],
+            });
+          // const personalID = ctx.request.headers["x-verify"];
+          if (!personalID.personal_id) {
+            return ctx.send(
+              { message: "No VerifyID passed in the header" },
+              400
+            );
+          }
 
-          if (razorpayInfo.status == "created") {
-            //TXN IS STARTED
-            //Create Order
-            longTime = "order_" + new Date().getTime();
-
-            const order_data = await strapi.entityService.create(
-              "api::order.order",
+          let send_razorpay_request;
+          try {
+            send_razorpay_request = await axios.post(
+              `${process.env.RZP_WRAPPER_URL}/orders/razorpay`,
+              order_body,
               {
-                data: {
-                  slug: generateOrderUid(),
-                  order_products: [...orderProducts],
-                  address: consumer.addressID,
-                  status: order_status.new,
-                  consumerName: consumer.conName || null,
-                  consumerPhone: consumer.conPhone || null,
-                  consumerEmail: consumer.conEmail || null,
-                  isResellerOrder: consumer.isResellerOrder,
-                  payment_mode: consumer.payment_mode,
-                  users_permissions_user: user_id,
-                  rzpayOrderId: razorpayInfo.id || null,
-                  payment_gateway: payment_gateways.razorpay,
+                headers: {
+                  "X-VERIFY": personalID.personal_id,
                 },
               }
             );
 
-            // razorpayInfo = Object.assign({ order_slug: order.slug }, razorpayInfo);
-            return ctx.send(razorpayInfo, 200);
+            console.log(send_razorpay_request.data);
+            if (send_razorpay_request.data.status === "created") {
+              const order_data = await strapi.entityService.create(
+                "api::order.order",
+                {
+                  data: {
+                    slug: generateOrderUid(),
+                    order_products: [...orderProducts],
+                    address: consumer.addressID,
+                    status: order_status.new,
+                    consumerName: consumer.conName || null,
+                    consumerPhone: consumer.conPhone || null,
+                    consumerEmail: consumer.conEmail || null,
+                    isResellerOrder: consumer.isResellerOrder,
+                    payment_mode: consumer.payment_mode,
+                    users_permissions_user: user_id,
+                    rzpayOrderId: send_razorpay_request.data.id,
+                    payment_gateway: payment_gateways.razorpay,
+                  },
+                }
+              );
+              return ctx.send(send_razorpay_request.data, 200);
+            }
+          } catch (err) {
+            console.log(err);
+            return ctx.send(err.data, err.status);
           }
+
           break;
 
         case payment_gateways.cashfree:
@@ -1536,6 +1567,10 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             },
           },
         });
+      const { id } = await strapi.plugins[
+        "users-permissions"
+      ].services.jwt.getToken(ctx);
+
       console.log(order_prod.order.users_permissions_user.id);
       if (order_prod.status !== order_status.delivered) {
         return ctx.send({ message: "Order is not yet delivered" }, 400);
@@ -1580,6 +1615,20 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       };
 
       const activity = createActivity(activity_data, strapi);
+      const txn_id = await generateTransactionId();
+      const txnTable = await strapi.db
+        .query("api::transaction.transaction")
+        .create({
+          data: {
+            purpose: txn_purpose.added_to_wallet,
+            user: id,
+            txn_type: tz_types.debit,
+            txn_id: txn_id,
+            remark: order_id,
+            mode: "WALLET",
+            amount: payoutAmt,
+          },
+        });
 
       const fcmData = {
         title: "Payout Completed",
@@ -1611,267 +1660,65 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
   ordersDashboard: async (ctx, next) => {
     try {
-      const totalOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            // {
-            order: {
-              $and: [{ id: { $not: null } }, { isPaid: true }],
-            },
-            // },
-            // $and: [
-            //   {
-            //     status: order_status.new,
-            //   },
-            // ],
-          },
-        });
-      const newOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.new,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const declinedOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.declined,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const acceptedOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.accepted,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const processingOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.processing,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const intransitOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.intransit,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const out_for_deliveryOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.out_for_delivery,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const deliveredOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.delivered,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const completedOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.completed,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const rtoOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.rto,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const return_requestOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.return_request,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const return_acceptedOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.return_accepted,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const return_declinedOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.return_declined,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const return_receivedOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.return_received,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
-      const return_pendingOrders = await strapi.db
-        .query("api::order-product.order-product")
-        .count({
-          where: {
-            $and: [
-              {
-                status: order_status.return_pending,
-              },
-              {
-                order: {
-                  $and: [{ id: { $not: null } }, { isPaid: true }],
-                },
-              },
-            ],
-          },
-        });
+      const result = await strapi.db.connection
+        .raw(`SELECT op.status, COUNT(*) as count
+FROM public.order_products op
+JOIN public.order_products_order_links opl ON op.id = opl.order_product_id
+JOIN public.orders o ON opl.order_id = o.id
+WHERE o.is_paid = true
+GROUP BY op.status;`);
 
-      return ctx.send(
-        {
-          total: totalOrders,
-          new: newOrders,
-          accepted: acceptedOrders,
-          declined: declinedOrders,
-          processing: processingOrders,
-          intransit: intransitOrders,
-          out_for_delivery: out_for_deliveryOrders,
-          delivered: deliveredOrders,
-          completed: completedOrders,
-          rto: rtoOrders,
-          return_request: return_requestOrders,
-          return_received: return_receivedOrders,
-          return_pending: return_pendingOrders,
-          return_declined: return_declinedOrders,
-          return_accepted: return_acceptedOrders,
-        },
-        200
-      );
+      let obj3 = {};
+      let order_statuses = Object.values(order_status);
+      let allCount = 0;
+
+      for (const status of order_statuses) {
+        const match = result.rows.find((item) => item.status === status);
+        obj3[status.toLowerCase()] = match ? parseInt(match.count) : 0;
+        allCount += match ? parseInt(match.count) : 0;
+      }
+
+      obj3["total"] = allCount;
+      delete obj3.all;
+
+      return ctx.send(obj3, 200);
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  ordersDashboardReseller: async (ctx, next) => {
+    try {
+      const { id } = await strapi.plugins[
+        "users-permissions"
+      ].services.jwt.getToken(ctx);
+
+      const result = await strapi.db.connection
+        .raw(`SELECT op.status, COUNT(*) as count
+FROM public.order_products op
+JOIN public.order_products_order_links opl ON op.id = opl.order_product_id
+JOIN public.orders o ON opl.order_id = o.id
+JOIN public.orders_users_permissions_user_links ou ON o.id = ou.order_id
+JOIN public.up_users u ON ou.user_id = u.id
+WHERE o.is_paid = true AND ou.user_id=${id}
+GROUP BY op.status;
+`);
+
+      let obj3 = {};
+      let order_statuses = Object.values(order_status);
+      let allCount = 0;
+
+      for (const status of order_statuses) {
+        const match = result.rows.find((item) => item.status === status);
+        obj3[status.toLowerCase()] = match ? parseInt(match.count) : 0;
+        allCount += match ? parseInt(match.count) : 0;
+      }
+
+      obj3["total"] = allCount;
+      delete obj3.all;
+
+      return ctx.send(obj3, 200);
     } catch (err) {
       console.log(err);
       return ctx.send(err, 400);

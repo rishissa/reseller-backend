@@ -202,7 +202,7 @@
     "personal_id": {
       "type": "string"
     },
-        "admin_subscriptions": {
+    "admin_subscriptions": {
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::admin-subscription.admin-subscription",

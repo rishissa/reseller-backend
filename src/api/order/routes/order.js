@@ -99,6 +99,15 @@ const myExtraRoutes = [
     },
   },
   {
+    method: "GET",
+    path: "/store/orders/stats",
+    handler: "order.ordersDashboardReseller",
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
+  {
     method: "POST",
     path: "/reseller/payout",
     handler: "order.payoutReseller",

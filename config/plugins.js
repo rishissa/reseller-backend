@@ -26,5 +26,10 @@ module.exports = ({ env }) => ({
     enabled: true,
     resolve: "./src/plugins/strapi-plugin-fcm", // path to plugin folder
   },
+  upload: {
+    config: {
+      sizeLimit: 250 * 1024 * 1024, // 256mb in bytes
+    },
+  },
   // ...
 });

@@ -14,12 +14,20 @@ module.exports = createCoreController(
         //fetch admin subs from razorpay wrapper
         const admin_subs = await strapi.db
           .query("api::admin-subscription.admin-subscription")
-          .findMany({ where: { paymentId: { $not: null } } });
-        const recentSub = admin_subs.reduce((acc, curr) => {
-          return curr.id > acc.id ? curr : acc;
-        });
+          .findMany({
+            where: { paymentId: { $not: null } },
+          });
+        console.log(admin_subs);
+        let recentSub;
+        if (admin_subs.length > 0) {
+          recentSub = admin_subs.reduce((acc, curr) => {
+            return curr.id > acc.id ? curr : acc;
+          });
+        }
+        console.log(recentSub);
+        ctx.request.query = { "populate[0]": "logo" };
         let response = await super.find(ctx);
-        response.data.attributes["subscription"] = recentSub;
+        response.data.attributes["subscription"] = recentSub || null;
         return ctx.send(response, 200);
       } catch (err) {
         console.log(err);

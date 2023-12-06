@@ -79,114 +79,178 @@ var longTime;
 
 module.exports = {
   webHook: async (ctx, next) => {
-    // console.log(JSON.stringify(ctx.request.body));
-    console.log(ctx.request.body);
-    try {
-      var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
+    console.log("Inside Razorpay Webhooks");
+    const paymentDetails = ctx.request.body;
 
-      var paymentCaptured =
-        paymentDetails.event === "payment.captured" ? true : false;
-      let event = paymentDetails.event;
-      let payment_method_rzp = paymentDetails.payload.payment.entity.method;
-      console.log("payment_method_rzp", payment_method_rzp);
-      const secret = "razor@123";
-      console.log("Inside WebHooks");
-      // decryptions
-      const shasum = crypto.createHmac("sha256", secret);
-      shasum.update(JSON.stringify(ctx.request.body));
-      const digest = shasum.digest("hex");
+    const string_pay_details = JSON.stringify(paymentDetails);
+    console.log(string_pay_details);
+    let payObject;
+    let method;
 
-      // razirpay order body
-      const rzpOrder = ctx.request.body;
+    if (paymentDetails) {
+      if (paymentDetails.payload.payment) {
+        method = paymentDetails.payload.payment.entity.method;
+      } else {
+        method = null;
+      }
+    } else {
+      return;
+    }
 
-      if (digest === ctx.request.headers["x-razorpay-signature"]) {
-        let order;
-        let type;
-        const getOrder = await strapi.db.query("api::order.order").findOne({
-          where: {
-            rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
-          },
-          select: ["*"],
-        });
-        if (getOrder) {
-          order = getOrder;
-          type = "order";
-        } else {
-          const getSubs = await strapi.db
-            .query("api::subscription.subscription")
-            .findOne({
+    console.log(JSON.stringify(paymentDetails));
+    switch (method) {
+      case "upi":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: null,
+          card_number: null,
+          bank: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      case "card":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: paymentDetails.payload.payment.entity.card.type,
+          card_number:
+            "**** **** **** " +
+            paymentDetails.payload.payment.entity.card.last4,
+          network: paymentDetails.payload.payment.entity.card.network,
+          bank: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      case "netbanking":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: null,
+          card_number: null,
+          network: null,
+          bank: paymentDetails.payload.payment.entity.bank,
+          wallet: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      default:
+        break;
+    }
+
+    switch (paymentDetails.event) {
+      case "payment.authorized":
+        console.log("Payment Authorized");
+        // const responseData1 = await axios.post(
+        //   "https://243f-115-245-32-169.ngrok-free.app/api/razorpay/webhooks",
+        //   JSON.stringify(paymentDetails),
+        //   {
+        //     headers: {
+        //       "x-razorpay-signature":
+        //         ctx.request.headers["x-razorpay-signature"],
+        //     },
+        //   }
+        // );
+        break;
+
+      case "payment.captured":
+        console.log("Payment Captured");
+
+        const responseData2 = await axios.post(
+          `${process.env.RZP_WRAPPER_URL}/razorpay/webhooks`,
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
+
+        if (responseData2.data.verified === true) {
+          console.log("Payment Verified by Webhooks");
+          console.log(paymentDetails.payload.payment.entity.order_id);
+          const updateAdminPaymnentLog = await strapi.db
+            .query("api::admin-subscription.admin-subscription")
+            .update({
               where: {
                 orderId: paymentDetails.payload.payment.entity.order_id,
               },
+              data: { paymentId: paymentDetails.payload.payment.entity.id },
             });
-          order = getSubs;
-          type = "subs";
+          return ctx.send("Success", 200);
         }
+        break;
 
-        if (order === null) return ctx.send({ error: "Invalid Request" }, 400);
+      case "payment.failed":
+        console.log("Payment Failed");
+        const responseData3 = await axios.post(
+          `${process.env.RZP_WRAPPER_URL}/razorpay/webhooks`,
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
 
-        var entryPaymentLog;
-        var paymentData = await getPaymentData({ paymentDetails, order, type });
+        break;
 
-        switch (event) {
-          case "payment.authorized":
-            console.log("Payment Authorized", event);
-            paymentData.status = PaymentStatus.authorized;
-            entryPaymentLog = await strapi.db
-              .query("api::payment-log.payment-log")
-              .create({
-                data: paymentData,
-              });
-            break;
-          case "payment.captured":
-            console.log("Payment Captured", event);
-            if (order.isPaid === false) {
-              if (type === "order") {
-                const entry = await strapi.db.query("api::order.order").update({
-                  where: {
-                    $and: [
-                      {
-                        rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
-                      },
-                      { isPaid: false },
-                    ],
-                  },
-                  data: {
-                    isPaid: true,
-                    paymentID: rzpOrder.payload.payment.entity.id,
-                    paymentSignature:
-                      ctx.request.headers["x-razorpay-signature"],
-                  },
-                });
-              }
+      case "settlement.processed":
+        console.log("Settlement Processed");
+        const responseData4 = await axios.post(
+          `${process.env.RZP_WRAPPER_URL}/api/razorpay/webhooks`,
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
 
-              paymentData.status = PaymentStatus.captured;
-              entryPaymentLog = await strapi.db
-                .query("api::payment-log.payment-log")
-                .create({
-                  data: paymentData,
-                });
-            }
-            break;
-          case "payment.failed":
-            paymentData.status = PaymentStatus.failed;
-            const entryPaymentFailed = await strapi.db
-              .query("api::payment-log.payment-log")
-              .create({
-                data: paymentData,
-              });
-            console.log("Payment Failed", event);
-            break;
-          default:
-            break;
-        }
-        return ctx.send({ message: "Webhooks executed Successfully" }, 200);
-      } else {
-        ctx.send({ message: "Request is Not Legit" }, 400);
-      }
-    } catch (err) {
-      console.log(err);
-      ctx.send({ message: "Request is Not Legit" }, 500);
+      default:
+        break;
     }
   },
 
@@ -1581,7 +1645,7 @@ module.exports = {
       const body = ctx.request.body;
       console.log(body);
       const phone = `91${body.phone.slice(-10)}`;
-      const templateID = "6523e2b9d6fc05698f1631e3";
+      const templateID = process.env.MSG91_OTP_TEMPLATE_ID;
       const otp = generateOTP();
       const url = "https://control.msg91.com/api/v5/flow/";
 
@@ -1635,7 +1699,7 @@ module.exports = {
       try {
         const send_sms = await axios.post(url, reqBody, {
           headers: {
-            authkey: "275588AIHmHWVyjtu5cd18c59",
+            authkey: process.env.MSG91_AUTH_KEY,
           },
         });
         return ctx.send(
