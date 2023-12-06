@@ -12,9 +12,11 @@ const bulkPriceVariants = async (plan, user, products) => {
         if (plan) {
           if (plan.premiumPricing === true && user.isPremium === true) {
             totalAmount +=
-              parseFloat(prod.quantity) * parseFloat(prod.premiumPrice);
+              parseFloat(prod.quantity) *
+              (parseFloat(prod.premiumPrice) || parseFloat(prod.price));
             variantPrice[prod.id] =
-              parseFloat(prod.quantity) * parseFloat(prod.premiumPrice);
+              parseFloat(prod.quantity) *
+              (parseFloat(prod.premiumPrice) || parseFloat(prod.price));
           } else {
             totalAmount += parseFloat(prod.quantity) * parseFloat(prod.price);
             variantPrice[prod.id] =

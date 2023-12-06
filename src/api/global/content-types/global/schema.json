@@ -64,14 +64,6 @@
     "cashfree_client_id": {
       "type": "string"
     },
-    "shippingPrice_type": {
-      "type": "enumeration",
-      "enum": [
-        "PRICE",
-        "PERCENTAGE"
-      ],
-      "default": "PRICE"
-    },
     "phonepe_merchant_id": {
       "type": "string"
     },

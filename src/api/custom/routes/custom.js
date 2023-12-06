@@ -118,6 +118,15 @@ module.exports = {
       },
     },
     {
+      method: "POST",
+      path: "/generate/pdf",
+      handler: "custom.pdfCatalogueGenerator",
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: "GET",
       path: "/orders/export/:id",
       handler: "custom.generateOrderDetailsPdfCatalogue",

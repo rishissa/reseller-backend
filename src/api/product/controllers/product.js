@@ -179,6 +179,13 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         return products;
       };
 
+      // const update_product = await strapi.db
+      //   .query("api::product.product")
+      //   .updateMany({
+      //     where: { cod_enabled: null },
+      //     data: { cod_enabled: true },
+      //   });
+
       if (pagination) {
         if (Object.keys(pagination).length > 0) {
           const { limit, offset } = getPagination(
@@ -223,7 +230,14 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         "api::product.product",
         id,
         {
-          fields: ["name", "slug", "id", "desc", "yt_video_link"],
+          fields: [
+            "name",
+            "slug",
+            "id",
+            "desc",
+            "yt_video_link",
+            "cod_enabled",
+          ],
           populate: {
             gallery: true,
             product_variants: { populate: { bulk_pricings: true } },

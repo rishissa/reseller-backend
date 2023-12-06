@@ -23,6 +23,8 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
       country,
       addressLine2,
       user,
+      email,
+      phone,
     } = ctx.request.body;
 
     try {
@@ -66,6 +68,8 @@ module.exports = createCoreController("api::address.address", ({ strapi }) => ({
           country: country,
           addressLine2: addressLine2,
           user: userID,
+          email: email,
+          phone: phone,
         },
       });
 

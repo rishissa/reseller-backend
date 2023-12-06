@@ -55,6 +55,12 @@
     "area": {
       "type": "string",
       "required": true
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
     }
   }
 }

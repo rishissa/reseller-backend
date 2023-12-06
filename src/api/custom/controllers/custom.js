@@ -10,6 +10,7 @@ const fs = require("fs");
 const bcrypt = require("bcryptjs");
 const mailTemplate = require("./mailTemplate");
 const JWT = require("jsonwebtoken");
+const p_limit = require("p-limit");
 const {
   PaymentStatus,
   baseURL,
@@ -45,6 +46,7 @@ const { generateTransactionId } = require("../../utils/GenerateTxnId");
 
 const { getPaymentData } = require("../services/razorpay");
 var browser = null;
+// const p_limit = require("p-limit")
 /*
  * A set of functions called "actions" for `custom`
  */
@@ -76,115 +78,313 @@ var longTime;
 
 module.exports = {
   webHook: async (ctx, next) => {
-    // console.log(JSON.stringify(ctx.request.body));
-    console.log(ctx.request.body);
-    try {
-      var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
+    console.log("Inside Razorpay Webhooks");
+    const paymentDetails = ctx.request.body;
 
-      var paymentCaptured =
-        paymentDetails.event === "payment.captured" ? true : false;
-      let event = paymentDetails.event;
-      let payment_method_rzp = paymentDetails.payload.payment.entity.method;
-      console.log("payment_method_rzp", payment_method_rzp);
-      const secret = "razor@123";
-      console.log("Inside WebHooks");
-      // decryptions
-      const shasum = crypto.createHmac("sha256", secret);
-      shasum.update(JSON.stringify(ctx.request.body));
-      const digest = shasum.digest("hex");
+    const string_pay_details = JSON.stringify(paymentDetails);
+    console.log(string_pay_details);
+    let payObject;
+    let method;
 
-      // razirpay order body
-      const rzpOrder = ctx.request.body;
-
-      if (digest === ctx.request.headers["x-razorpay-signature"]) {
-        let order;
-        let type;
-        const getOrder = await strapi.db.query("api::order.order").findOne({
-          where: {
-            rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
-          },
-          select: ["*"],
-        });
-        if (getOrder) {
-          order = getOrder;
-          type = "order";
-        } else {
-          const getSubs = await strapi.db
-            .query("api::subscription.subscription")
-            .findOne({
-              where: {
-                orderId: paymentDetails.payload.payment.entity.order_id,
-              },
-            });
-          order = getSubs;
-          type = "subs";
-        }
-
-        if (order === null) return ctx.send({ error: "Invalid Request" }, 400);
-
-        var entryPaymentLog;
-        var paymentData = await getPaymentData({ paymentDetails, order, type });
-
-        switch (event) {
-          case "payment.authorized":
-            console.log("Payment Authorized", event);
-            paymentData.status = PaymentStatus.authorized;
-            entryPaymentLog = await strapi.db
-              .query("api::payment-log.payment-log")
-              .create({
-                data: paymentData,
-              });
-            break;
-          case "payment.captured":
-            console.log("Payment Captured", event);
-            if (order.isPaid === false) {
-              if (type === "order") {
-                const entry = await strapi.db.query("api::order.order").update({
-                  where: {
-                    $and: [
-                      {
-                        rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
-                      },
-                      { isPaid: false },
-                    ],
-                  },
-                  data: {
-                    isPaid: true,
-                    paymentID: rzpOrder.payload.payment.entity.id,
-                    paymentSignature:
-                      ctx.request.headers["x-razorpay-signature"],
-                  },
-                });
-              }
-
-              paymentData.status = PaymentStatus.captured;
-              entryPaymentLog = await strapi.db
-                .query("api::payment-log.payment-log")
-                .create({
-                  data: paymentData,
-                });
-            }
-            break;
-          case "payment.failed":
-            paymentData.status = PaymentStatus.failed;
-            const entryPaymentFailed = await strapi.db
-              .query("api::payment-log.payment-log")
-              .create({
-                data: paymentData,
-              });
-            console.log("Payment Failed", event);
-            break;
-          default:
-            break;
-        }
-        return ctx.send({ message: "Webhooks executed Successfully" }, 200);
+    if (paymentDetails) {
+      if (paymentDetails.payload.payment) {
+        method = paymentDetails.payload.payment.entity.method;
       } else {
-        ctx.send({ message: "Request is Not Legit" }, 400);
+        method = null;
       }
-    } catch (err) {
-      console.log(err);
-      ctx.send({ message: "Request is Not Legit" }, 500);
+    } else {
+      return;
     }
+
+    console.log(JSON.stringify(paymentDetails));
+    switch (method) {
+      case "upi":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: null,
+          card_number: null,
+          bank: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      case "card":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: paymentDetails.payload.payment.entity.card.type,
+          card_number:
+            "**** **** **** " +
+            paymentDetails.payload.payment.entity.card.last4,
+          network: paymentDetails.payload.payment.entity.card.network,
+          bank: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      case "netbanking":
+        payObject = {
+          rz_order_creationId: paymentDetails.payload.payment.entity.order_id,
+          rz_payment_id: paymentDetails.payload.payment.entity.id,
+          amount:
+            parseFloat(paymentDetails.payload.payment.entity.amount) / 100 ||
+            null,
+          currency: paymentDetails.payload.payment.entity.currency,
+          status: paymentDetails.payload.payment.entity.status
+            ? paymentDetails.payload.payment.entity.status.toUpperCase()
+            : null,
+          method: paymentDetails.payload.payment.entity.method,
+          card_id: paymentDetails.payload.payment.entity.card_id,
+          card_type: null,
+          card_number: null,
+          network: null,
+          bank: paymentDetails.payload.payment.entity.bank,
+          wallet: null,
+          vpa: paymentDetails.payload.payment.entity.vpa,
+          email: paymentDetails.payload.payment.entity.email,
+          contact: paymentDetails.payload.payment.entity.contact,
+          notes: paymentDetails.payload.payment.entity.contact,
+        };
+        break;
+
+      default:
+        break;
+    }
+
+    switch (paymentDetails.event) {
+      case "payment.authorized":
+        console.log("Payment Authorized");
+        // const responseData1 = await axios.post(
+        //   "https://243f-115-245-32-169.ngrok-free.app/api/razorpay/webhooks",
+        //   JSON.stringify(paymentDetails),
+        //   {
+        //     headers: {
+        //       "x-razorpay-signature":
+        //         ctx.request.headers["x-razorpay-signature"],
+        //     },
+        //   }
+        // );
+        break;
+
+      case "payment.captured":
+        console.log("Payment Captured");
+
+        const responseData2 = await axios.post(
+          "http://64.227.147.124:1337/api/razorpay/webhooks",
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
+
+        if (responseData2.data.verified === true) {
+          console.log("Payment Verified by Webhooks");
+        }
+        break;
+
+      case "payment.failed":
+        console.log("Payment Failed");
+        const responseData3 = await axios.post(
+          "http://64.227.147.124:1337/api/razorpay/webhooks",
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
+
+        break;
+
+      case "settlement.processed":
+        console.log("Settlement Processed");
+        const responseData4 = await axios.post(
+          "http://64.227.147.124:1337/api/razorpay/webhooks",
+          { data: string_pay_details, payObject },
+          {
+            headers: {
+              "x-razorpay-signature":
+                ctx.request.headers["x-razorpay-signature"],
+            },
+          }
+        );
+
+      default:
+        break;
+    }
+
+    return ctx.send("Success", 200);
+    // try {
+    //   var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
+    //   var paymentCaptured =
+    //     paymentDetails.event === "payment.captured" ? true : false;
+    //   let event = paymentDetails.event;
+    //   let payment_method_rzp = paymentDetails.payload.payment.entity.method;
+    //   console.log("Inside WebHooks");
+    //   const secret = "razor@123";
+    //   const shasum = crypto.createHmac("sha256", secret);
+    //   shasum.update(JSON.stringify(ctx.request.body));
+    //   const digest = shasum.digest("hex");
+    //   const rzpOrder = JSON.stringify(ctx.request.body);
+
+    //   if (digest === ctx.request.headers["x-razorpay-signature"]) {
+    //     const order = await strapi.db
+    //       .query("api::order-product.order-product")
+    //       .findOne({
+    //         where: {
+    //           rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
+    //         },
+    //       });
+
+    //     var entryPaymentLog;
+    //     var paymentData;
+    //     if (payment_method_rzp === payment_method.UPI) {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         vpa: paymentDetails.payload.payment.entity.vpa,
+    //         order: [order.id],
+    //       };
+    //     }
+    //     if (payment_method_rzp === payment_method.NET_BANKING) {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         bank: paymentDetails.payload.payment.entity.bank,
+    //         order: [order.id],
+    //       };
+    //     } else {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         cardId: paymentDetails.payload.payment.entity.card_id,
+    //         cardNumber:
+    //           "**** **** **** " +
+    //           paymentDetails.payload.payment.entity.card.last4,
+    //         cardType: paymentDetails.payload.payment.entity.card.type,
+    //         cardNetwork: paymentDetails.payload.payment.entity.card.network,
+    //         order: [order.id],
+    //       };
+    //     }
+    //     switch (event) {
+    //       case "payment.authorized":
+    //         console.log("Payment Authorized", event);
+    //         console.log(order);
+    //         paymentData.status = PaymentStatus.captured;
+    //         entryPaymentLog = await strapi.entityService.create(
+    //           "api::payment-log.payment-log",
+    //           {
+    //             data: paymentData,
+    //           }
+    //         );
+    //         break;
+    //       case "payment.captured":
+    //         console.log("Payment Captured", event);
+    //         if (order.isPaid === false) {
+    //           console.log(entryPaymentLog);
+    //           const entry = await strapi.db
+    //             .query("api::order-product.order-product")
+    //             .update({
+    //               where: {
+    //                 rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
+    //               },
+    //               data: {
+    //                 isPaid: true,
+    //                 paymentID: rzpOrder.payload.payment.entity.id,
+    //                 paymentSignature:
+    //                   ctx.request.headers["x-razorpay-signature"],
+    //               },
+    //             });
+    //         }
+    //         //role based operations
+    //         //firebase otp verification
+    //         //email templating
+    //         //webhook complete testing
+    //         break;
+    //       case "payment.failed":
+    //         const entryPaymentFailed = await strapi.entityService.create(
+    //           "api::payment-log.payment-log",
+    //           {
+    //             data: paymentData,
+    //           }
+    //         );
+    //         console.log("Payment Failed", event);
+    //         break;
+    //       default:
+    //         break;
+    //     }
+    //   } else {
+    //     ctx.send(
+    //       {
+    //         message: "Request is Not Legit",
+    //       },
+    //       400
+    //     );
+    //   }
+    //   ctx.send(
+    //     {
+    //       message: "Webhooks executed Successfully",
+    //     },
+    //     200
+    //   );
+    // } catch (err) {
+    //   // else {
+    //   ctx.send(
+    //     {
+    //       message: "Request is Not Legit",
+    //     },
+    //     500
+    //   );
+    //   // }
+    //   // return err;
+    // }
   },
 
   selectedProductVariant: async (ctx, next) => {
@@ -215,9 +415,12 @@ module.exports = {
             },
           }
         );
-        arrayProductVariants.push(entries);
+
+        if (entries !== null) {
+          arrayProductVariants.push(entries);
+        }
       }
-      return arrayProductVariants;
+      return ctx.send(arrayProductVariants, 200);
     } catch (err) {
       return err;
     }
@@ -757,7 +960,7 @@ module.exports = {
               where: { id: user.id },
               data: { otp: null, otp_expiration: null, confirmed: true },
             });
-          return ctx.send({ jwt: token }, 200);
+          return ctx.send({ jwt: token, user }, 200);
         } catch (err) {
           console.log(err);
           return ctx.send(err, 400);
@@ -867,13 +1070,71 @@ module.exports = {
       // } else {
       //   url = `https://admin.hangs.in/singleproduct/${ids}/${phone}`;
       // }
+
+      if (browser == null) {
+        browser = await puppeteer.launch({
+          headless: "new",
+          // userDataDir: "../../../chromium_instances",
+          args: [
+            "--disable-features=IsolateOrigins",
+            "--disable-site-isolation-trials",
+            "--autoplay-policy=user-gesture-required",
+            "--disable-background-networking",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-breakpad",
+            "--disable-client-side-phishing-detection",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--disable-dev-shm-usage",
+            "--disable-domain-reliability",
+            "--disable-extensions",
+            "--disable-features=AudioServiceOutOfProcess",
+            "--disable-hang-monitor",
+            "--disable-ipc-flooding-protection",
+            "--disable-notifications",
+            "--disable-offer-store-unmasked-wallet-cards",
+            "--disable-popup-blocking",
+            "--disable-print-preview",
+            "--disable-prompt-on-repost",
+            "--disable-renderer-backgrounding",
+            "--disable-setuid-sandbox",
+            "--disable-speech-api",
+            "--disable-sync",
+            "--hide-scrollbars",
+            "--ignore-gpu-blacklist",
+            "--metrics-recording-only",
+            "--mute-audio",
+            // "--no-default-browser-check",
+            "--no-first-run",
+            "--no-pings",
+            "--no-sandbox",
+            "--no-zygote",
+            "--password-store=basic",
+            "--use-gl=swiftshader",
+            "--use-mock-keychain",
+          ],
+        });
+      }
       const url = `https://admin.hangs.in/pdf-maker/${ids}/${phone}`;
+      console.log("BROWSER STARTED: " + new Date().getTime());
+      const page = await browser.newPage();
+      await page.goto(url, {
+        waitUntil: "networkidle0",
+      });
+      console.log("PAGE OPENED: " + new Date().getTime());
+      await page.emulateMediaType("screen");
+
+      await page.waitForSelector("#root", { visible: true });
+
+      console.log("PDF STARTED: " + new Date().getTime());
+
       console.log(url);
 
       console.log("BROWSER STARTING: " + new Date().getTime());
 
       const outputPath = path.join(__dirname, `../../../../../pdfs/file.pdf`);
-      const page = await pdf_generator(url);
+      // const page = await pdf_generator(url);
 
       const pdf = await page.pdf({
         // path: `../../../../../pdfs/${date}.pdf`,
@@ -897,6 +1158,138 @@ module.exports = {
         ctx.body = fs.createReadStream(filePath);
         // return ctx.send(pdf, 200);
       }
+      // await browser.close();
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  pdfCatalogueGenerator: async (ctx, next) => {
+    const path = require("path");
+    try {
+      const body = ctx.request.body;
+      console.log(body);
+      if (!body.hasOwnProperty("baseUrl"))
+        return ctx.send(
+          {
+            message:
+              "Invalid Request,body must contains baseUrl having id,phone",
+          },
+          400
+        );
+      // const parts = ctx.request.body.id.split("_");
+      // const phone = ctx.request.params.phone;
+      // const baseAdminApi = ctx.request.params.api
+      const { baseUrl } = ctx.request.body;
+      // const ids = parts.filter((n) => n).join("_");
+      // const regex = /^[\w_]+$/;
+      // if (regex.test(ids) === false) {
+      //   return ctx.send(
+      //     { message: "IDs with only underscores is allowed" },
+      //     400
+      //   );
+      // }
+
+      // var url;
+      // if (!user) {
+      //   url = `https://admin.hangs.in/pdf-maker/${ids}/${phone}`;
+      // } else {
+      //   url = `https://admin.hangs.in/singleproduct/${ids}/${phone}`;
+      // }
+
+      if (browser == null) {
+        browser = await puppeteer.launch({
+          headless: "new",
+          // userDataDir: "../../../chromium_instances",
+          args: [
+            "--disable-features=IsolateOrigins",
+            "--disable-site-isolation-trials",
+            "--autoplay-policy=user-gesture-required",
+            "--disable-background-networking",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-breakpad",
+            "--disable-client-side-phishing-detection",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--disable-dev-shm-usage",
+            "--disable-domain-reliability",
+            "--disable-extensions",
+            "--disable-features=AudioServiceOutOfProcess",
+            "--disable-hang-monitor",
+            "--disable-ipc-flooding-protection",
+            "--disable-notifications",
+            "--disable-offer-store-unmasked-wallet-cards",
+            "--disable-popup-blocking",
+            "--disable-print-preview",
+            "--disable-prompt-on-repost",
+            "--disable-renderer-backgrounding",
+            "--disable-setuid-sandbox",
+            "--disable-speech-api",
+            "--disable-sync",
+            "--hide-scrollbars",
+            "--ignore-gpu-blacklist",
+            "--metrics-recording-only",
+            "--mute-audio",
+            // "--no-default-browser-check",
+            "--no-first-run",
+            "--no-pings",
+            "--no-sandbox",
+            "--no-zygote",
+            "--password-store=basic",
+            "--use-gl=swiftshader",
+            "--use-mock-keychain",
+          ],
+        });
+      }
+      // const url = `${baseUrl}/pdf-maker/${ids}/${phone}`;
+      console.log("BROWSER STARTED: " + new Date().toLocaleTimeString());
+      const limit = p_limit(1);
+      await limit(async () => {
+        const page = await browser.newPage();
+        await page.goto(baseUrl, {
+          waitUntil: "networkidle0",
+        });
+        console.log("PAGE OPENED: " + new Date().toLocaleTimeString());
+        await page.emulateMediaType("screen");
+
+        await page.waitForSelector("#root", { visible: true });
+
+        console.log("PDF STARTED: " + new Date().toLocaleTimeString());
+
+        // console.log(url);
+
+        console.log("BROWSER STARTING: " + new Date().toLocaleTimeString());
+
+        const outputPath = path.join(__dirname, `../../../../../pdfs/file.pdf`);
+        // const page = await pdf_generator(url);
+
+        const pdf = await page.pdf({
+          // path: `../../../../../pdfs/${date}.pdf`,
+          // path: `../../../../../pdfs/${date}.pdf`,
+          path: outputPath,
+          margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
+          printBackground: true,
+          format: "A4",
+        });
+
+        // console.log("PDF COMPLETE: " + new Date().getTime());
+        // console.log(pdf);
+        if (pdf) {
+          const filePath = outputPath;
+          const filename = path.basename(filePath);
+          // const pdfBuffer = pdf;
+          logDownloadEvent(ctx);
+          ctx.attachment(filename);
+          // browser = null;
+          ctx.type = "application/octet-stream";
+          ctx.body = fs.createReadStream(filePath);
+          // return ctx.send(pdf, 200);
+        }
+        await page.close();
+        console.log("page closed", new Date().toLocaleTimeString());
+      });
       // await browser.close();
     } catch (err) {
       console.log(err);
@@ -1059,14 +1452,14 @@ module.exports = {
       //   );
       // }
 
-      // if (parseFloat(body.amount) < parseInt(globalVar.withdrawLimit)) {
-      //   return ctx.send(
-      //     {
-      //       message: `Entered amount must be greater than ${globalVar.withdrawLimit}`,
-      //     },
-      //     400
-      //   );
-      // }
+      if (parseFloat(user.wallet_balance) < parseInt(globalVar.withdrawLimit)) {
+        return ctx.send(
+          {
+            message: `Entered amount must be greater than ${globalVar.withdrawLimit}`,
+          },
+          400
+        );
+      }
 
       let schema = {
         account_number: globalVar.razorpayXAccountNumber,

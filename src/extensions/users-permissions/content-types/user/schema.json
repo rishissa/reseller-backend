@@ -198,6 +198,9 @@
     },
     "otp_expiration": {
       "type": "datetime"
+    },
+    "personal_id": {
+      "type": "string"
     }
   }
 }

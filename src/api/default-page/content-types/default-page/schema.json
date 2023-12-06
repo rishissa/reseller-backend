@@ -1,0 +1,34 @@
+{
+  "kind": "singleType",
+  "collectionName": "default_pages",
+  "info": {
+    "singularName": "default-page",
+    "pluralName": "default-pages",
+    "displayName": "Default Page",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "about_us": {
+      "type": "richtext"
+    },
+    "terms_and_conditions": {
+      "type": "richtext"
+    },
+    "privacy_policy": {
+      "type": "richtext"
+    },
+    "refund_and_cancellation": {
+      "type": "richtext"
+    },
+    "ship_and_delivery": {
+      "type": "richtext"
+    },
+    "contact_us": {
+      "type": "richtext"
+    }
+  }
+}
