@@ -700,6 +700,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
                 ? true
                 : false,
             totalResellerMargin: Math.abs(totalResellerMargin - totalAmount),
+            razorpay_env: process.env.ENVIRONMENT,
             // order_id:
           };
 
@@ -952,12 +953,9 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
   },
 
   verifyPaymentOrder: async (ctx, next) => {
-    const crypto = require("crypto");
     console.log("Verify Payment Order");
     var products = [];
     var productVar = [];
-    var globalVar = await strapi.entityService.findMany("api::global.global");
-    var totalAmount = 0;
 
     try {
       var { razorpay_payment_id, razorpay_order_id, razorpay_signature } =
@@ -996,163 +994,160 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           id: order.users_permissions_user.id,
         },
       });
-      // return order;
-      // console.log(order);
-      var secret = globalVar.razorpaySecret;
-      var key = globalVar.razorpayKey;
 
-      var generated_signature = crypto
-        .createHmac("sha256", secret)
-        .update(razorpay_order_id + "|" + razorpay_payment_id)
-        .digest("hex");
+      let verify_callback;
 
-      if (generated_signature === razorpay_signature) {
-        // console.log("Payment Verified");
-        var instance = new Razorpay({
-          key_id: key,
-          key_secret: secret,
-        });
+      try {
+        verify_callback = await axios.post(
+          `${process.env.RZP_WRAPPER_URL}/orders/razorpay/verify`,
+          { order_id: order.id, razorpay_env: process.env.ENVIRONMENT },
+          {
+            headers: {
+              razorpay_order_id,
+              razorpay_payment_id,
+              razorpay_signature,
+            },
+          }
+        );
+      } catch (err) {
+        console.log(err.response);
+        return ctx.send(err.response, 400);
+      }
 
-        const rzOrder = await instance.orders.fetch(razorpay_order_id);
+      const rzOrder = verify_callback.data;
 
-        const entry = await strapi.db.query("api::order.order").update({
-          where: { id: order.id },
+      const entry = await strapi.db.query("api::order.order").update({
+        where: { id: order.id },
+        data: {
+          isPaid: true,
+          paymentID: razorpay_payment_id.toString(),
+          paymentSignature: razorpay_signature.toString(),
+        },
+      });
+
+      for (const [i, prod] of order.order_products.entries()) {
+        const entryOrderProducts = await strapi.db
+          .query("api::order-product.order-product")
+          .update({
+            where: { id: order.order_products[i].id },
+            data: {
+              status: order_status.new,
+            },
+          });
+
+        const updateVariantQuantity = await strapi.db
+          .query("api::product-variant.product-variant")
+          .update({
+            data: {
+              quantity:
+                parseInt(order.order_products[i].product_variant.quantity) -
+                parseInt(entryOrderProducts.quantity),
+            },
+            where: {
+              id: order.order_products[i].product_variant.id,
+            },
+          });
+        products.push(order.order_products[i].product_variant.name);
+        productVar.push(order.order_products[i].product_variant);
+      }
+
+      //create metrics
+      let metricData = {
+        id: order.users_permissions_user.id,
+        field:
+          order.payment_mode === payment_methods.cod
+            ? "cod_orders"
+            : "prepaid_orders",
+      };
+
+      const user_metrics = await userMetrics(strapi, metricData);
+
+      //product metrics
+      let metricProductData = {
+        // id: userInfo.id,
+        field: "ordered_count",
+        products_variants: productVar,
+      };
+      const prod_metrics = await productMetrics(strapi, metricProductData);
+      //create activity
+      let metricProductData2 = {
+        // id: userInfo.id,
+        field: "revenue_generated",
+        ordered_products: order.order_products,
+      };
+      const prod_metrics_revenue = await productMetrics(
+        strapi,
+        metricProductData2
+      );
+      let metricProductData3 = {
+        // id: userInfo.id,
+        field: "premium_plan_orders",
+        products_variants: order.order_products,
+      };
+      const prod_metrics_revenue2 = await productMetrics(
+        strapi,
+        metricProductData3
+      );
+      //create entry in txn table
+      const txn_id = await generateTransactionId();
+      const txnTable = await strapi.db
+        .query("api::transaction.transaction")
+        .create({
           data: {
-            isPaid: true,
-            paymentID: razorpay_payment_id.toString(),
-            paymentSignature: razorpay_signature.toString(),
+            purpose: txn_purpose.purchase,
+            user: id,
+            txn_type: tz_types.credit,
+            txn_id: txn_id,
+            remark: order.id,
+            mode: "MONEY",
+            amount: rzOrder.amount / 100,
           },
         });
 
-        for (const [i, prod] of order.order_products.entries()) {
-          const entryOrderProducts = await strapi.db
-            .query("api::order-product.order-product")
-            .update({
-              where: { id: order.order_products[i].id },
-              data: {
-                status: order_status.new,
-              },
-            });
+      let ordersCount =
+        userInfo.ordersCount === null ? 1 : parseInt(userInfo.ordersCount) + 1;
+      const updateUser = await strapi
+        .query("plugin::users-permissions.user")
+        .update({
+          where: { id: order.users_permissions_user.id },
+          data: {
+            ordersCount: ordersCount,
+          },
+        });
+      //create activity
+      let activity_data = {
+        event: activity_status.order_placed,
+        user: userInfo.id,
+        description: `Order #${order.slug} Placed for the User: ${
+          userInfo.name
+        } ID: ${userInfo.id} -- Amount: ${rzOrder.amount / 100} -- Mode: ${
+          order.payment_mode
+        }`,
+      };
 
-          const updateVariantQuantity = await strapi.db
-            .query("api::product-variant.product-variant")
-            .update({
-              data: {
-                quantity:
-                  parseInt(order.order_products[i].product_variant.quantity) -
-                  parseInt(entryOrderProducts.quantity),
-              },
-              where: {
-                id: order.order_products[i].product_variant.id,
-              },
-            });
-          products.push(order.order_products[i].product_variant.name);
-          productVar.push(order.order_products[i].product_variant);
-        }
-
-        //create metrics
-        let metricData = {
-          id: order.users_permissions_user.id,
-          field:
-            order.payment_mode === payment_methods.cod
-              ? "cod_orders"
-              : "prepaid_orders",
-        };
-
-        const user_metrics = await userMetrics(strapi, metricData);
-
-        //product metrics
-        let metricProductData = {
-          // id: userInfo.id,
-          field: "ordered_count",
-          products_variants: productVar,
-        };
-        const prod_metrics = await productMetrics(strapi, metricProductData);
-        //create activity
-        let metricProductData2 = {
-          // id: userInfo.id,
-          field: "revenue_generated",
-          ordered_products: order.order_products,
-        };
-        const prod_metrics_revenue = await productMetrics(
-          strapi,
-          metricProductData2
-        );
-        let metricProductData3 = {
-          // id: userInfo.id,
-          field: "premium_plan_orders",
-          products_variants: order.order_products,
-        };
-        const prod_metrics_revenue2 = await productMetrics(
-          strapi,
-          metricProductData3
-        );
-        //create entry in txn table
-        const txn_id = await generateTransactionId();
-        const txnTable = await strapi.db
-          .query("api::transaction.transaction")
-          .create({
-            data: {
-              purpose: txn_purpose.purchase,
-              user: id,
-              txn_type: tz_types.credit,
-              txn_id: txn_id,
-              remark: order.id,
-              mode: "MONEY",
-              amount: rzOrder.amount / 100,
-            },
-          });
-
-        let ordersCount =
-          userInfo.ordersCount === null
-            ? 1
-            : parseInt(userInfo.ordersCount) + 1;
-        const updateUser = await strapi
-          .query("plugin::users-permissions.user")
-          .update({
-            where: { id: order.users_permissions_user.id },
-            data: {
-              ordersCount: ordersCount,
-            },
-          });
-        //create activity
-        let activity_data = {
-          event: activity_status.order_placed,
-          user: userInfo.id,
-          description: `Order #${order.slug} Placed for the User: ${
-            userInfo.name
-          } ID: ${userInfo.id} -- Amount: ${rzOrder.amount / 100} -- Mode: ${
-            order.payment_mode
-          }`,
-        };
-
-        const activity = createActivity(activity_data, strapi);
-        console.log(products);
-        const fcmData = {
-          title: "Order Placed",
-          body: `Your Order has been placed successfully`,
-          image: order.order_products[0].product_variant.product.thumbnail.id,
-          description: `Your Order for ${products} has been placed successfully`,
-          type: notify_type.order,
-          data: `${order.id}`,
-          users_permissions_user: order.users_permissions_user.id,
-          targetType: "token",
-          targetValue: userInfo.fcmToken,
-        };
-        //create notification entry
-        const notification = await strapi.db
-          .query("api::notification.notification")
-          .create({ data: fcmData });
-        const sendNotification = await fcmNotify(
-          fcmData,
-          userInfo.fcmToken,
-          notification.id
-        );
-
-        return ctx.send({ message: "Signature Verified" }, 200);
-      } else {
-        return ctx.send({ message: "Payment Failure" }, 400);
-      }
+      const activity = createActivity(activity_data, strapi);
+      console.log(products);
+      const fcmData = {
+        title: "Order Placed",
+        body: `Your Order has been placed successfully`,
+        image: order.order_products[0].product_variant.product.thumbnail.id,
+        description: `Your Order for ${products} has been placed successfully`,
+        type: notify_type.order,
+        data: `${order.id}`,
+        users_permissions_user: order.users_permissions_user.id,
+        targetType: "token",
+        targetValue: userInfo.fcmToken,
+      };
+      //create notification entry
+      const notification = await strapi.db
+        .query("api::notification.notification")
+        .create({ data: fcmData });
+      const sendNotification = await fcmNotify(
+        fcmData,
+        userInfo.fcmToken,
+        notification.id
+      );
+      return ctx.send({ message: "Signature Verified" }, 200);
     } catch (err) {
       console.log(err);
       // console.log("i am here");

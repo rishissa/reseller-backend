@@ -55,6 +55,9 @@
     },
     "store_map_location": {
       "type": "string"
+    },
+        "theme_color": {
+      "type": "string"
     }
   }
 }

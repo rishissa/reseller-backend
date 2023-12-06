@@ -56,6 +56,7 @@ module.exports = createCoreController(
 
         let order_body = {
           totalAmount: 1000,
+          razorpay_env: process.env.ENVIRONMENT,
         };
         let send_razorpay_request;
         try {
