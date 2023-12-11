@@ -50,7 +50,7 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
         data["razorpayKey"] = data.razorpayTestKey || null;
         data["razorpaySecret"] = data.razorpayTestSecret || null;
       }
-      // console.log(userInfo);
+      console.log(data);
       return ctx.send(data, 200);
     } catch (err) {
       console.log(err);

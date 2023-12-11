@@ -56,6 +56,7 @@ module.exports = createCoreController(
 
         let order_body = {
           totalAmount: 1000,
+          razorpay_env: process.env.ENVIRONMENT,
         };
         let send_razorpay_request;
         try {
@@ -97,6 +98,8 @@ module.exports = createCoreController(
       try {
         var { razorpay_payment_id, razorpay_order_id, razorpay_signature } =
           ctx.request.body;
+        console.log(ctx.request.body);
+
         let verify_callback;
 
         try {

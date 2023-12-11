@@ -1,4 +1,5 @@
 "use strict";
+const { order_status } = require("../../../../config/constants");
 
 /**
  * order-product controller
@@ -50,12 +51,31 @@ module.exports = createCoreController(
             },
           });
 
+        const global_keys = await strapi.db
+          .query("api::global.global")
+          .findOne();
         if (order_product) {
           if (
             order_product.order.isPaid === true &&
             order_product.order.paymentID !== null
           ) {
             let shiprocket_order;
+            if (order_product.status === order_status.return_declined) {
+              if (global_keys.return_request === true) {
+                let now = new Date();
+                let deliveredDate = order_product.updated_at;
+                let return_request_date = new Date(
+                  now.setDate(now.getDate() + global_keys.return_request_days)
+                );
+                if (now < return_request_date) {
+                  order_product["return_request"] = true;
+                } else {
+                  order_product["return_request"] = false;
+                }
+              } else {
+                order_product["return_request"] = false;
+              }
+            }
             if (order_product.custom_courier === null) {
               shiprocket_order = true;
               order_product["shiprocket_order"] = shiprocket_order;
@@ -92,7 +112,7 @@ module.exports = createCoreController(
                       status: "X-PPOM",
                       activity: "In Transit - Shipment picked up",
                       location: "Palwal_NewColony_D (Haryana)",
-                      "sr-status": "42",
+                      sr_status: "42",
                     },
                     {
                       date: "2021-12-23 14:19:37",
@@ -115,6 +135,7 @@ module.exports = createCoreController(
               };
               let shiprocket_courier = track_data;
               order_product["shiprocket_courier"] = shiprocket_courier;
+              let msg1 = `*📦Order Tracking*\n 🆔Order ID: *#${order_product.order.slug}*\n 📌 Product Name: *${order_product.product_variant.product.name} ${order_product.product_variant.name}*\n🚚Order Status: ${track_data.tracking_data.shipment_track[0].current_status}\n 🔗Track: ${track_data.tracking_data.track_url}`;
               // const global = await strapi.db
               //   .query("api::global.global")
               //   .findOne();
@@ -127,11 +148,16 @@ module.exports = createCoreController(
               //     },
               //   }
               // );
+              order_product["return_request"] = global_keys.return_request;
+              order_product["msg"] = msg1;
               delete order_product.custom_courier;
               delete order_product.shiprocket_order_item;
             } else {
+              let msg2 = `*📦Order Tracking*\n 🆔Order ID: *#${order_product.order.slug}*\n 📌 Product Name: *${order_product.product_variant.product.name} ${order_product.product_variant.name}*\n 🚚Order Status: ${order_product.status}`;
               shiprocket_order = false;
               order_product["shiprocket_order"] = shiprocket_order;
+              order_product["return_request"] = global_keys.return_request;
+              order_product["msg"] = msg2;
               delete order_product.shiprocket_order_item;
               console.log("Custom Courier Order");
             }
@@ -141,6 +167,8 @@ module.exports = createCoreController(
         } else {
           return ctx.send({ message: "No Order Found" }, 204);
         }
+        order_product["cod_price"] = global_keys.codPrepaidAmount;
+        // order_product["return_request_days"] = global_keys.return_request_days;
         return ctx.send(order_product, 200);
       } catch (err) {
         console.log(err);
