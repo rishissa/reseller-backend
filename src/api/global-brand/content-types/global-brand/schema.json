@@ -43,6 +43,21 @@
     },
     "domain": {
       "type": "string"
+    },
+        "facebook_page_url": {
+      "type": "string"
+    },
+    "instagram_page_url": {
+      "type": "string"
+    },
+    "telegram_page_url": {
+      "type": "string"
+    },
+    "store_map_location": {
+      "type": "string"
+    },
+    "theme_color": {
+      "type": "string"
     }
   }
 }

@@ -50,10 +50,10 @@ module.exports = {
       transaction_charges: 0,
       total_discount: 0,
       sub_total: sub_total,
-      length: 10,
-      breadth: 15,
-      height: 20,
-      weight: 2.5,
+      length: data.dimensions.length,
+      breadth: data.dimensions.breadth,
+      height: data.dimensions.height,
+      weight: data.dimensions.weight,
     };
 
     return body;

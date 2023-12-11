@@ -47,8 +47,7 @@
       "required": false
     },
     "consumerEmail": {
-      "type": "string",
-      "required": true
+      "type": "string"
     },
     "isResellerOrder": {
       "type": "boolean",

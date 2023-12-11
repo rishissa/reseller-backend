@@ -5,7 +5,8 @@ const { getPagination } = require("../../../src/api/utils/Pagination");
 const JWT = require("jsonwebtoken");
 const { activity_status } = require("../../../config/constants");
 const { createActivity } = require("../../api/utils/Helpers");
-
+const NodeCache = require("node-cache");
+const myCache = new NodeCache({ stdTTL: 0 });
 module.exports = (plugin) => {
   //Handle User Auth
   const auth = plugin.controllers.auth.callback;
@@ -203,6 +204,7 @@ module.exports = (plugin) => {
   //Handle User(me) function
   const me = plugin.controllers.user.me;
   plugin.controllers.user.me = async (ctx) => {
+    console.log("inside USer me");
     const { id } = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);
@@ -211,7 +213,6 @@ module.exports = (plugin) => {
       where: { id: id },
       populate: {
         role: true,
-        metric: true,
         subscriptions: {
           // where: { paymentId: { $not: { $null: true } } },
           populate: {
@@ -220,11 +221,30 @@ module.exports = (plugin) => {
             },
           },
         },
-        admin_subscriptions: true,
+        admin_subscriptions: { where: { paymentId: { $not: null } } },
       },
     });
-    var recentSub;
+
+    let recentSub;
+    let admin_sub_fee = myCache.get("key");
+    console.log(admin_sub_fee);
     if (subs.role.name === "Admin") {
+      if (!admin_sub_fee || admin_sub_fee === undefined) {
+        const admin_sub = await axios.get(
+          `${process.env.RZP_WRAPPER_URL}/global`
+        );
+
+        let global_key = {
+          admin_server_fee:
+            admin_sub.data.data.attributes.client_server_subscription_price ||
+            0,
+        };
+        myCache.set("key", global_key);
+        admin_sub_fee =
+          admin_sub.data.data.attributes.client_server_subscription_price;
+      } else {
+        admin_sub_fee = myCache.get("key").admin_server_fee;
+      }
       if (subs.admin_subscriptions.length > 0) {
         // for (const it of subs.admin_subscriptions) {
         //   if (new Date(it.validTo) > new Date()) {
@@ -236,6 +256,7 @@ module.exports = (plugin) => {
         });
       }
     } else {
+      //check active subscription
       if (subs.subscriptions.length > 0) {
         recentSub = subs.subscriptions.reduce((acc, curr) => {
           return curr.id > acc.id ? curr : acc;
@@ -255,10 +276,17 @@ module.exports = (plugin) => {
         }
       }
     }
-    //check active subscription
-
     await me(ctx);
-    Object.assign(ctx.response.body, { subscription: recentSub || null });
+    if (subs.role.name === "Admin") {
+      Object.assign(ctx.response.body, {
+        subscription: recentSub || null,
+        server_sub_fees: admin_sub_fee,
+      });
+    } else {
+      Object.assign(ctx.response.body, {
+        subscription: recentSub || null,
+      });
+    }
   };
 
   const findAll = plugin.controllers.user.find;

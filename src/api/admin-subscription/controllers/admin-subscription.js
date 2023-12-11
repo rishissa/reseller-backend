@@ -37,7 +37,7 @@ module.exports = createCoreController(
         let latest_sub;
         if (subscriptions.length > 0) {
           for (const it of subscriptions) {
-            if (new Date(it.validTo) > new Date()) {
+            if (new Date(it.validTo) > new Date() && it.paymentId !== null) {
               latest_sub = it;
             }
           }
@@ -72,8 +72,6 @@ module.exports = createCoreController(
           console.log(err);
           return ctx.send(err, 400);
         }
-
-        // console.log(send_razorpay_request.status);
         if (send_razorpay_request.status === 200) {
           console.log(body);
           const create_subscription = await strapi.db
@@ -83,6 +81,7 @@ module.exports = createCoreController(
                 validTo: body.validTo,
                 validFrom: body.validFrom,
                 users_permissions_user: id,
+                orderId: send_razorpay_request.data.id,
               },
             });
           return ctx.send(send_razorpay_request.data, 200);
@@ -112,10 +111,19 @@ module.exports = createCoreController(
               },
             }
           );
+          if (verify_callback.status === 200) {
+            //update
+            const updateSub = await strapi.db
+              .query("api::admin-subscription.admin-subscription")
+              .update({
+                where: { orderId: razorpay_order_id },
+                data: { paymentId: razorpay_payment_id },
+              });
+          }
           return ctx.send(verify_callback.data, 200);
         } catch (err) {
           console.log(err.response);
-          return ctx.send(err.response, 400);
+          return ctx.send("Error", 400);
         }
       } catch (err) {
         console.log(err);

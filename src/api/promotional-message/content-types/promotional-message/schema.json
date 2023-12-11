@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "promotional_messages",
+  "info": {
+    "singularName": "promotional-message",
+    "pluralName": "promotional-messages",
+    "displayName": "PromotionalMessages",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "content": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "action": {
+      "type": "string"
+    }
+  }
+}

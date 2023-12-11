@@ -1,9 +1,38 @@
-'use strict';
+"use strict";
 
 /**
  * global-brand controller
  */
 
-const { createCoreController } = require('@strapi/strapi').factories;
+const { createCoreController } = require("@strapi/strapi").factories;
 
-module.exports = createCoreController('api::global-brand.global-brand');
+module.exports = createCoreController(
+  "api::global-brand.global-brand",
+  ({ strapi }) => ({
+    async find(ctx, next) {
+      try {
+        //fetch admin subs from razorpay wrapper
+        const admin_subs = await strapi.db
+          .query("api::admin-subscription.admin-subscription")
+          .findMany({
+            where: { paymentId: { $not: null } },
+          });
+        console.log(admin_subs);
+        let recentSub;
+        if (admin_subs.length > 0) {
+          recentSub = admin_subs.reduce((acc, curr) => {
+            return curr.id > acc.id ? curr : acc;
+          });
+        }
+        console.log(recentSub);
+        ctx.request.query = { "populate[0]": "logo" };
+        let response = await super.find(ctx);
+        response.data.attributes["subscription"] = recentSub || null;
+        return ctx.send(response, 200);
+      } catch (err) {
+        console.log(err);
+        return ctx.send(err, 400);
+      }
+    },
+  })
+);

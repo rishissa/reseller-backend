@@ -4,5 +4,5 @@ module.exports = ({ env }) => ({
   app: {
     keys: env.array("APP_KEYS"),
   },
-  url: "https://api.arham-watches.hangs.in",
+  url: "https://api.sumeetonline.in",
 });

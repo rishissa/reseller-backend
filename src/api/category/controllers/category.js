@@ -41,7 +41,8 @@ module.exports = createCoreController(
                   where: { isActive: true },
                   populate: { thumbnail: true, product_variants: true },
                 },
-                sub_categories: true,
+                sub_categories: { populate: { thumbnail: true } },
+                thumbnail: true,
               },
             });
 

@@ -100,7 +100,6 @@ module.exports = {
       return;
     }
 
-    console.log(JSON.stringify(paymentDetails));
     switch (method) {
       case "upi":
         payObject = {
@@ -123,6 +122,9 @@ module.exports = {
           contact: paymentDetails.payload.payment.entity.contact,
           notes: paymentDetails.payload.payment.entity.contact,
         };
+
+        console.log("From UPI");
+        console.log(payObject);
         break;
 
       case "card":
@@ -211,6 +213,16 @@ module.exports = {
 
         if (responseData2.data.verified === true) {
           console.log("Payment Verified by Webhooks");
+          console.log(paymentDetails.payload.payment.entity.order_id);
+          const updateAdminPaymnentLog = await strapi.db
+            .query("api::admin-subscription.admin-subscription")
+            .update({
+              where: {
+                orderId: paymentDetails.payload.payment.entity.order_id,
+              },
+              data: { paymentId: paymentDetails.payload.payment.entity.id },
+            });
+          return ctx.send("Success", 200);
         }
         break;
 
@@ -226,7 +238,7 @@ module.exports = {
             },
           }
         );
-
+        return ctx.send("Success", 200);
         break;
 
       case "settlement.processed":
@@ -241,7 +253,7 @@ module.exports = {
             },
           }
         );
-
+        return ctx.send("Success", 200);
       default:
         break;
     }
@@ -1785,7 +1797,7 @@ module.exports = {
       const body = ctx.request.body;
       console.log(body);
       const phone = `91${body.phone.slice(-10)}`;
-      const templateID = "6523e2b9d6fc05698f1631e3";
+      const templateID = process.env.MSG91_OTP_TEMPLATE_ID;
       const otp = generateOTP();
       const url = "https://control.msg91.com/api/v5/flow/";
 
@@ -1839,7 +1851,7 @@ module.exports = {
       try {
         const send_sms = await axios.post(url, reqBody, {
           headers: {
-            authkey: "275588AIHmHWVyjtu5cd18c59",
+            authkey: process.env.MSG91_AUTH_KEY,
           },
         });
         return ctx.send(

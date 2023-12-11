@@ -29,7 +29,7 @@ module.exports = (config, { strapi }) => {
       //   check if the values passed are valid
       switch (k) {
         case "category":
-          filters.push({ category: { id: key.category } });
+          filters.push({ category: { id: { $in: JSON.parse(key.category) } } });
           break;
         case "price":
           filters.push({
@@ -69,6 +69,25 @@ module.exports = (config, { strapi }) => {
               },
             };
           }
+          break;
+        case "search":
+          let search_key = ctx.request.query.search;
+          filters.push({
+            $or: [
+              {
+                desc: {
+                  // $startsWith: key,
+                  $containsi: search_key,
+                },
+              },
+              {
+                name: {
+                  // $startsWith: key,
+                  $containsi: search_key,
+                },
+              },
+            ],
+          });
           break;
         default:
           break;

@@ -156,6 +156,8 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       const filters = ctx.request.filters;
       const sort = ctx.request.sort;
 
+      console.log(JSON.stringify(filters));
+
       var meta;
       var products;
 
@@ -246,12 +248,11 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       );
 
       if (product.category !== null) {
-        const products = (
-          await strapi.db.connection
-            .from(strapi.getModel("api::product.product").collectionName)
-            .orderByRaw("RANDOM()")
-            .limit(6)
-        ).map((it) => it.id);
+        let products = await strapi.db.connection.raw(
+          `SELECT id FROM public.products WHERE is_active=true ORDER BY RANDOM() LIMIT 6`
+        );
+
+        products = products.rows.map((it) => it.id);
 
         const list = await strapi.entityService.findMany(
           "api::product.product",
