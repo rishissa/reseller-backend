@@ -37,7 +37,7 @@ module.exports = createCoreController(
         let latest_sub;
         if (subscriptions.length > 0) {
           for (const it of subscriptions) {
-            if (new Date(it.validTo) > new Date()) {
+            if (new Date(it.validTo) > new Date() && it.paymentId !== null) {
               latest_sub = it;
             }
           }
@@ -105,7 +105,7 @@ module.exports = createCoreController(
         try {
           verify_callback = await axios.post(
             `${process.env.RZP_WRAPPER_URL}/client-subscription/razorpay/verify`,
-            null,
+            { razorpay_env: process.env.ENVIRONMENT },
             {
               headers: {
                 razorpay_order_id,

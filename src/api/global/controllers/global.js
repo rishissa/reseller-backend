@@ -42,30 +42,14 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
 
   async find(ctx, next) {
     try {
-      // const user = await strapi.plugins[
-      //   "users-permissions"
-      // ].services.jwt.getToken(ctx);
-
-      // console.log(user);
-      // const userInfo = await strapi
-      //   .query("plugin::users-permissions.user")
-      //   .findOne({
-      //     where: {
-      //       id: user.id,
-      //     },
-      //     populate: {
-      //       role: true,
-      //     },
-      //   });
+      const global_environment = process.env.ENVIRONMENT;
       var data;
       data = await strapi.db.query("api::global.global").findOne();
-      // if (userInfo.role.type === "admin") {
-      // } else {
-      //   data = await strapi.db.query("api::global.global").findOne();
-      //   console.log(data);
-      //   // delete data.razorpayKey;
-      //   delete data.razorpaySecret;
-      // }
+
+      if (global_environment === "DEV") {
+        data["razorpayKey"] = data.razorpayTestKey || null;
+        data["razorpaySecret"] = data.razorpayTestSecret || null;
+      }
       // console.log(userInfo);
       return ctx.send(data, 200);
     } catch (err) {

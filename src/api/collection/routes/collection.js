@@ -57,7 +57,7 @@ const myExtraRoutes = [
     handler: "collection.searchProdInCollections",
     config: {
       policies: [],
-      middlewares: [], //query validation
+      middlewares: ["api::collection.product-filters"], //query validation
     },
   },
   {

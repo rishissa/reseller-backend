@@ -83,6 +83,12 @@
         "MSG91"
       ],
       "default": "MSG91"
+    },
+        "razorpayTestKey": {
+      "type": "string"
+    },
+    "razorpayTestSecret": {
+      "type": "string"
     }
   }
 }
