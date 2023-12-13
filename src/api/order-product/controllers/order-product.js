@@ -63,11 +63,15 @@ module.exports = createCoreController(
             if (order_product.status === order_status.return_declined) {
               if (global_keys.return_request === true) {
                 let now = new Date();
-                let deliveredDate = order_product.updated_at;
+                let deliveredDate = new Date(order_product.updatedAt);
                 let return_request_date = new Date(
-                  now.setDate(now.getDate() + global_keys.return_request_days)
+                  new Date(order_product.updatedAt).setDate(
+                    new Date(order_product.updatedAt).getDate() +
+                      global_keys.return_request_days
+                  )
                 );
-                if (now < return_request_date) {
+
+                if (deliveredDate < return_request_date) {
                   order_product["return_request"] = true;
                 } else {
                   order_product["return_request"] = false;
@@ -80,9 +84,10 @@ module.exports = createCoreController(
               shiprocket_order = true;
               order_product["shiprocket_order"] = shiprocket_order;
               let track_data;
-              let shipment_id =
-                order_product.shiprocket_order_item.ship_rocket_order
-                  .shipment_id;
+              let shipment_id = order_product.shiprocket_order_item
+                ? order_product.shiprocket_order_item.ship_rocket_order
+                    .shipment_id
+                : null;
 
               track_data = {
                 tracking_data: {

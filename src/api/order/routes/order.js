@@ -152,6 +152,33 @@ const myExtraRoutes = [
       middlewares: [],
     },
   },
+  {
+    method: "PUT",
+    path: "/orders/:id/return",
+    handler: "order.returnRequestOrder",
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
+  {
+    method: "PUT",
+    path: "/orders/:id/accept_return",
+    handler: "order.acceptReturnRequests",
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
+  {
+    method: "PUT",
+    path: "/orders/:id/reject_return",
+    handler: "order.rejectReturnRequests",
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
 ];
 
 module.exports = customRouter(defaultRouter, myExtraRoutes);

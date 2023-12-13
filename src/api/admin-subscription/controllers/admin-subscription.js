@@ -105,7 +105,7 @@ module.exports = createCoreController(
         try {
           verify_callback = await axios.post(
             `${process.env.RZP_WRAPPER_URL}/client-subscription/razorpay/verify`,
-            null,
+            { razorpay_env: process.env.ENVIRONMENT },
             {
               headers: {
                 razorpay_order_id,

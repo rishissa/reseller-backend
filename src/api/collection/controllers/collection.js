@@ -16,42 +16,33 @@ module.exports = createCoreController(
     searchProdInCollections: async (ctx, next) => {
       try {
         const id = ctx.request.params.id;
-        const key = ctx.request.query.product;
+        const filters = ctx.request.filters;
+        const sort = ctx.request.sort;
         var meta;
-        const collectionProds = await strapi.entityService.findOne(
-          "api::collection.collection",
-          id,
-          {
+        const collectionProds = await strapi.db
+          .query("api::collection.collection")
+          .findOne({
+            where: { id: id },
             populate: {
               products: {
-                filters: {
-                  $or: [
-                    {
-                      name: {
-                        $containsi: key,
-                      },
-                    },
-                    {
-                      desc: {
-                        $containsi: key,
-                      },
-                    },
-                  ],
-                },
                 populate: {
                   thumbnail: true,
-                  product_variant: true,
+                  product_variants: true,
+                },
+                orderBy: sort,
+                where: {
+                  $and: filters,
                 },
               },
             },
-          }
-        );
+          });
         meta = {
           total: collectionProds.products.length,
         };
         // const products = await strapi
         return { collectionProds, meta };
       } catch (err) {
+        console.log(err);
         return err;
       }
     },

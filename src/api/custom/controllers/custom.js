@@ -222,8 +222,8 @@ module.exports = {
               },
               data: { paymentId: paymentDetails.payload.payment.entity.id },
             });
-          return ctx.send("Success", 200);
         }
+        return ctx.send("Success", 200);
         break;
 
       case "payment.failed":
@@ -243,22 +243,22 @@ module.exports = {
 
       case "settlement.processed":
         console.log("Settlement Processed");
-        const responseData4 = await axios.post(
-          `${process.env.RZP_WRAPPER_URL}/api/razorpay/webhooks`,
-          { data: string_pay_details, payObject },
-          {
-            headers: {
-              "x-razorpay-signature":
-                ctx.request.headers["x-razorpay-signature"],
-            },
-          }
-        );
+        // const responseData4 = await axios.post(
+        //   `${process.env.RZP_WRAPPER_URL}/api/razorpay/webhooks`,
+        //   { data: string_pay_details, payObject },
+        //   {
+        //     headers: {
+        //       "x-razorpay-signature":
+        //         ctx.request.headers["x-razorpay-signature"],
+        //     },
+        //   }
+        // );
         return ctx.send("Success", 200);
       default:
         break;
     }
 
-    return ctx.send("Success", 200);
+    // return ctx.send("Success", 200);
     // try {
     //   var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
     //   var paymentCaptured =
