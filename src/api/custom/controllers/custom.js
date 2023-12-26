@@ -50,6 +50,8 @@ const { generateTransactionId } = require("../../utils/GenerateTxnId");
 const pLimit = require("p-limit");
 const limit = pLimit(1);
 const { getPaymentData } = require("../services/razorpay");
+const xmlbuilder = require("xmlbuilder");
+
 var browser = null;
 /*
  * A set of functions called "actions" for `custom`
@@ -928,11 +930,12 @@ module.exports = {
       case "MSG91":
         console.log("Using mSG91");
         try {
-          const phone = ctx.request.body.phoneNumber;
+          let phone = ctx.request.body.phoneNumber;
           const otp = ctx.request.body.otp;
 
           console.log(phone);
 
+          phone = phone.trim().split(" ").join("");
           //check if the user is available or not
           const user = await strapi
             .query("plugin::users-permissions.user")
@@ -971,7 +974,7 @@ module.exports = {
             expiresIn: "7d",
           });
 
-          if (user.phone == "8018801808") {
+          if (user.phone.slice(-10) == "8018801808") {
             return ctx.send({ jwt: token, user }, 200);
           }
           const updateUser = await strapi
@@ -1864,6 +1867,131 @@ module.exports = {
       }
 
       // const
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  generateSiteMap: async (ctx, next) => {
+    try {
+      //get all product IDs
+
+      const domain = "https://sumeetonline.in";
+      let urls = [
+        {
+          loc: domain,
+          changefreq: "weekly",
+          priority: "1.0",
+        },
+        {
+          loc: `${domain}/about_us`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/contact_us`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/ship_and_delivery`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/privacy_policy`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/terms_and_conditions`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/refund_and_cancellation`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/storelogin`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/register`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+      ];
+      let productIDs = await strapi.db.query("api::product.product").findMany({
+        where: { isActive: true, category: { name: { $not: null } } },
+        select: ["id"],
+      });
+
+      productIDs = productIDs.map((id) => {
+        let obj = {
+          loc: `${domain}/product/${id.id}`,
+          changefreq: "weekly",
+          priority: "0.8",
+        };
+        return obj;
+      });
+
+      let collectionsIDs = await strapi.db
+        .query("api::collection.collection")
+        .findMany({ select: ["id"] });
+      collectionsIDs = collectionsIDs.map((id) => {
+        let obj = {
+          loc: `${domain}/collection/${id.id}`,
+          changefreq: "weekly",
+          priority: "0.8",
+        };
+        return obj;
+      });
+
+      let categioriesIDs = await strapi.db
+        .query("api::category.category")
+        .findMany({ select: ["id"] });
+      categioriesIDs = categioriesIDs.map((id) => {
+        let obj = {
+          loc: `${domain}/category/${id.id}`,
+          changefreq: "weekly",
+          priority: "0.8",
+        };
+        return obj;
+      });
+      urls.push(...productIDs, ...collectionsIDs, ...categioriesIDs);
+
+      const root = xmlbuilder.create("urlset", {
+        version: "1.0",
+        encoding: "UTF-8",
+      });
+      root.att("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9");
+      root.att("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+      root.att(
+        "xsi:schemaLocation",
+        "http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd"
+      );
+
+      // Add each URL to the sitemap XML
+      urls.forEach((url) => {
+        let url_data = root.ele("url");
+        url_data.ele("loc", url.loc);
+        url_data.ele("changefreq", url.changefreq);
+        url_data.ele("priority", url.priority);
+      });
+
+      // Convert XML to string
+      const xmlString = root.end({ pretty: true });
+
+      // Save the XML to a file
+      fs.writeFileSync("sitemap.xml", xmlString, "utf8");
+
+      // let productsURLs =
+      // console.log(productIDs);
+      return ctx.send(urls, 200);
     } catch (err) {
       console.log(err);
       return ctx.send(err, 400);

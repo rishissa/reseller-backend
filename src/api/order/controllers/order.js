@@ -12,6 +12,7 @@ const {
   createActivity,
   generateOrderUid,
   shippingPriceCalculation,
+  generateCODPrice,
 } = require("../../utils/Helpers");
 
 const {
@@ -289,7 +290,17 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           //if yes, use that
           //else use global shippingPrice
           totalAmount = 0;
-          totalAmount += parseFloat(globalVar.codPrepaidAmount);
+          const sum = Object.values(variantPrice).reduce(
+            (acc, value) => acc + value,
+            0
+          );
+
+          totalAmount =
+            globalVar.codPrepaidAmountType === "PRICE"
+              ? globalVar.codPrepaidAmount
+              : generateCODPrice(sum, globalVar.codPrepaidAmount);
+
+          // totalAmount += parseFloat(globalVar.codPrepaidAmount);
           // totalAmount = commission(totalAmount);
         }
 
@@ -297,7 +308,17 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           if (plan.name === "Free") {
             if (plan.codAllowed === true) {
               totalAmount = 0;
-              totalAmount += parseFloat(globalVar.codPrepaidAmount);
+              const sum = Object.values(variantPrice).reduce(
+                (acc, value) => acc + value,
+                0
+              );
+
+              totalAmount =
+                globalVar.codPrepaidAmountType === "PRICE"
+                  ? globalVar.codPrepaidAmount
+                  : generateCODPrice(sum, globalVar.codPrepaidAmount);
+
+              // totalAmount += parseFloat(globalVar.codPrepaidAmount);
               // totalAmount = commission(totalAmount);
             } else {
               return ctx.send(
@@ -308,7 +329,17 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           } else {
             if (plan.codAllowed === true) {
               totalAmount = 0;
-              totalAmount += parseFloat(globalVar.codPrepaidAmount);
+              const sum = Object.values(variantPrice).reduce(
+                (acc, value) => acc + value,
+                0
+              );
+
+              totalAmount =
+                globalVar.codPrepaidAmountType === "PRICE"
+                  ? globalVar.codPrepaidAmount
+                  : generateCODPrice(sum, globalVar.codPrepaidAmount);
+
+              // totalAmount += parseFloat(globalVar.codPrepaidAmount);
               // totalAmount = commission(totalAmount);
               // if (plan.price === null || plan.price === 0) {
               // } else {
@@ -2248,6 +2279,9 @@ GROUP BY op.status;
     try {
       const order_id = ctx.request.params.id;
 
+      const { id, isAdmin = false } = await strapi.plugins[
+        "users-permissions"
+      ].services.jwt.getToken(ctx);
       //check if order is available
       const order = await strapi.db
         .query("api::order-product.order-product")
@@ -2281,9 +2315,17 @@ GROUP BY op.status;
           )
         );
 
-        console.log(deliveredDate);
-        console.log(return_request_date);
         if (deliveredDate < return_request_date) {
+          const createReturnOrder = await strapi.db
+            .query("api::return-order.return-order")
+            .create({
+              data: {
+                order_product: order.id,
+                note: ctx.request.body.note || null,
+                media: ctx.request.body.media || null,
+                user: id,
+              },
+            });
           //change status to return request
           const update_order_product = await strapi.db
             .query("api::order-product.order-product")

@@ -46,10 +46,15 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       var data;
       data = await strapi.db.query("api::global.global").findOne();
 
+      const store_type = await strapi.db
+        .query("api::store-setting.store-setting")
+        .findOne({ select: ["store_mode"] });
+
       if (global_environment === "DEV") {
         data["razorpayKey"] = data.razorpayTestKey || null;
         data["razorpaySecret"] = data.razorpayTestSecret || null;
       }
+      data["store_type"] = store_type.store_mode;
       console.log(data);
       return ctx.send(data, 200);
     } catch (err) {

@@ -55,12 +55,9 @@ module.exports = createCoreController(
           .query("api::global.global")
           .findOne();
         if (order_product) {
-          if (
-            order_product.order.isPaid === true &&
-            order_product.order.paymentID !== null
-          ) {
+          if (order_product.order.isPaid === true) {
             let shiprocket_order;
-            if (order_product.status === order_status.return_declined) {
+            if (order_product.status === order_status.delivered) {
               if (global_keys.return_request === true) {
                 let now = new Date();
                 let deliveredDate = new Date(order_product.updatedAt);
@@ -153,7 +150,12 @@ module.exports = createCoreController(
               //     },
               //   }
               // );
-              order_product["return_request"] = global_keys.return_request;
+
+              if (order_product.status !== order_status.delivered) {
+                order_product["return_request"] = false;
+              } else {
+                order_product["return_request"] = global_keys.return_request;
+              }
               order_product["msg"] = msg1;
               delete order_product.custom_courier;
               delete order_product.shiprocket_order_item;
@@ -161,7 +163,11 @@ module.exports = createCoreController(
               let msg2 = `*📦Order Tracking*\n 🆔Order ID: *#${order_product.order.slug}*\n 📌 Product Name: *${order_product.product_variant.product.name} ${order_product.product_variant.name}*\n 🚚Order Status: ${order_product.status}`;
               shiprocket_order = false;
               order_product["shiprocket_order"] = shiprocket_order;
-              order_product["return_request"] = global_keys.return_request;
+              if (order_product.status !== order_status.delivered) {
+                order_product["return_request"] = false;
+              } else {
+                order_product["return_request"] = global_keys.return_request;
+              }
               order_product["msg"] = msg2;
               delete order_product.shiprocket_order_item;
               console.log("Custom Courier Order");

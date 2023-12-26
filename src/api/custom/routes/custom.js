@@ -207,5 +207,14 @@ module.exports = {
         middlewares: [],
       },
     },
+    {
+      method: "GET",
+      path: "/site-map",
+      handler: "custom.generateSiteMap",
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };

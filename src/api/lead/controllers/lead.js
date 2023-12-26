@@ -37,7 +37,7 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
         activity_data["user"] = user_details.id;
         activity_data[
           "description"
-        ] = `New Lead Added By User: ${user.name} ID:${user.id} Role: ${user.role.name}`;
+        ] = `New Lead Added By User: ${user_details.name} ID:${user_details.id} Role: ${user_details.role.name}`;
       } else {
         activity_data["user"] = null;
         activity_data["description"] = `New Lead Added By User: ${
@@ -124,6 +124,81 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
     }
   },
 
+  async userLeads(ctx, next) {
+    console.log("Inside User Stats");
+
+    var meta;
+    var leadsList;
+    let tags = Object.values(lead_status);
+    let tag = ctx.request.query.tag;
+    try {
+      const pagination = ctx.request.query.pagination;
+
+      const { id, isAdmin = false } = await strapi.plugins[
+        "users-permissions"
+      ].services.jwt.getToken(ctx);
+
+      if (!tag || tag === undefined || tag.length === 0) {
+        tag = tags;
+      } else {
+        if (!tags.includes(tag.toUpperCase())) {
+          return ctx.send({ status: `Only tags allowed are [${tags}].` }, 400);
+        }
+        tag = [tag.toUpperCase()];
+      }
+      const getLeads = async (offset, limit) => {
+        const leads = await strapi.db.query("api::lead.lead").findWithCount({
+          where: {
+            status: { $in: tag },
+            user: { id: id },
+          },
+          orderBy: { id: "desc" },
+          offset: offset,
+          limit: limit,
+          populate: {
+            assigned_to: { populate: { avatar: true } },
+            user: { populate: { avatar: true } },
+            product: { populate: { thumbnail: true } },
+          },
+        });
+        return leads;
+      };
+
+      // console.log(await getLeads(null, null));
+      if (pagination) {
+        if (Object.keys(pagination).length > 0) {
+          const { limit, offset } = getPagination(
+            pagination.page,
+            pagination.size
+          );
+          leadsList = await getLeads(offset, limit);
+          meta = {
+            pagination: {
+              page: pagination.page ? parseInt(pagination.page) : 1,
+              pageSize: parseInt(pagination.size),
+              pageCount: Math.ceil(leadsList[1] / limit),
+              total: leadsList[1],
+            },
+          };
+        }
+      } else {
+        console.log("No Pagination");
+        leadsList = await getLeads(null, null);
+        meta = {
+          pagination: {
+            page: 1,
+            pageSize: leadsList[1],
+            pageCount: 1,
+            total: leadsList[1],
+          },
+        };
+      }
+      return ctx.send({ data: leadsList[0], meta }, 200);
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
   async assignLead(ctx, next) {
     try {
       const id = ctx.request.params.id;

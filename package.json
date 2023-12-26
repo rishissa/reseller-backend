@@ -35,7 +35,8 @@
     "strapi-plugin-custom-links": "^0.2.1",
     "strapi-plugin-fcm": "^1.0.7",
     "strapi-plugin-random-sort": "^0.0.3",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "xmlbuilder": "^15.1.1"
   },
   "author": {
     "name": "Ronak Thakkar"

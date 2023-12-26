@@ -472,6 +472,13 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
                     $containsi: key,
                   },
                 },
+                {
+                  category: {
+                    name: {
+                      $containsi: key,
+                    },
+                  },
+                },
               ],
             },
           ],
