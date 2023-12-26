@@ -28,6 +28,7 @@ module.exports = createCoreController(
         const data = {
           order_product: order_product,
           order: order_product[0].order,
+          dimensions: ctx.request.body,
           // product: order_product.product_variant.product,
           user: order_product[0].order.users_permissions_user,
           global: global,
@@ -174,6 +175,104 @@ module.exports = createCoreController(
       } catch (error) {
         console.log(error);
         return ctx.send(error, 500);
+      }
+    },
+    trackOrder: async (ctx, next) => {
+      try {
+        const order_id = ctx.request.params.id;
+
+        //find order product
+        const order_product = await strapi.db
+          .query("api::order-product.order-product")
+          .findOne({ where: { id: order_id } });
+
+        if (!order_product) {
+          return ctx.send({ message: `Invalid OrderProduct ID passed` }, 204);
+        }
+
+        //find shiprocket order item
+        //find shipmentID
+        const shiprocket_order = await strapi.db
+          .query("api::ship-rocket-order.ship-rocket-order")
+          .findOne({
+            where: { order_items: { order_item: { id: order_id } } },
+          });
+
+        //call shiprocket track API
+        let track_data;
+        const global = await strapi.db.query("api::global.global").findOne();
+
+        try {
+          track_data = {
+            tracking_data: {
+              track_status: 1,
+              shipment_status: 42,
+              shipment_track: [
+                {
+                  id: 185584215,
+                  awb_code: "1091188857722",
+                  courier_company_id: 10,
+                  shipment_id: 168347943,
+                  order_id: 168807908,
+                  pickup_date: null,
+                  delivered_date: null,
+                  weight: "0.10",
+                  packages: 1,
+                  current_status: "PICKED UP",
+                  delivered_to: "Mumbai",
+                  destination: "Mumbai",
+                  consignee_name: "Musarrat",
+                  origin: "PALWAL",
+                  courier_agent_details: null,
+                  edd: "2021-12-27 23:23:18",
+                },
+              ],
+              shipment_track_activities: [
+                {
+                  date: "2021-12-23 14:23:18",
+                  status: "X-PPOM",
+                  activity: "In Transit - Shipment picked up",
+                  location: "Palwal_NewColony_D (Haryana)",
+                  "sr-status": "42",
+                },
+                {
+                  date: "2021-12-23 14:19:37",
+                  status: "FMPUR-101",
+                  activity: "Manifested - Pickup scheduled",
+                  location: "Palwal_NewColony_D (Haryana)",
+                  "sr-status": "NA",
+                },
+                {
+                  date: "2021-12-23 14:19:34",
+                  status: "X-UCI",
+                  activity: "Manifested - Consignment Manifested",
+                  location: "Palwal_NewColony_D (Haryana)",
+                  "sr-status": "5",
+                },
+              ],
+              track_url: "https://shiprocket.co//tracking/1091188857722",
+              etd: "2021-12-28 10:19:35",
+            },
+          };
+          // await axios.get(
+          //   `https://apiv2.shiprocket.in/v1/external/courier/track/shipment/${shiprocket_order.shipment_id}`,
+          //   {
+          //     headers: {
+          //       Authorization: `Bearer ${global.token}`,
+          //     },
+          //   }
+          // );
+        } catch (err) {
+          console.log(err);
+          return ctx.send(err, 400);
+        }
+        let track_data_activities =
+          track_data.tracking_data.shipment_track_activities;
+        // console.log(shiprocket_order);
+        return ctx.send(track_data_activities, 200);
+      } catch (err) {
+        console.log(err);
+        return ctx.send(err, 400);
       }
     },
   })

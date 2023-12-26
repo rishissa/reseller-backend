@@ -54,10 +54,7 @@ module.exports = createCoreController(
           .query("api::global.global")
           .findOne();
         if (order_product) {
-          if (
-            order_product.order.isPaid === true &&
-            order_product.order.paymentID !== null
-          ) {
+          if (order_product.order.isPaid === true) {
             let shiprocket_order;
             if (order_product.status === order_status.return_declined) {
               if (global_keys.return_request === true) {
@@ -166,7 +163,7 @@ module.exports = createCoreController(
               console.log("Custom Courier Order");
             }
           } else {
-            return ctx.send({ message: `This Order is Not Paid yet` }, 400);
+            return ctx.send(order_product, 200);
           }
         } else {
           return ctx.send({ message: "No Order Found" }, 204);

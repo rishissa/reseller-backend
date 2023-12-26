@@ -156,6 +156,8 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       const filters = ctx.request.filters;
       const sort = ctx.request.sort;
 
+      console.log(JSON.stringify(filters));
+
       var meta;
       var products;
 
@@ -299,7 +301,6 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       ctx.send(err, 400);
     }
   },
-
   //cart products
   async selectedProducts(ctx, next) {
     var products = ctx.request.body.products;
@@ -468,6 +469,13 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
                   name: {
                     // $startsWith: key,
                     $containsi: key,
+                  },
+                },
+                {
+                  category: {
+                    name: {
+                      $containsi: key,
+                    },
                   },
                 },
               ],

@@ -29,26 +29,9 @@ module.exports = createCoreController(
                   thumbnail: true,
                   product_variants: true,
                 },
-                // orderBy: {
-                //   product_variants: {
-                //     price: "asc",
-                //   },
-                // },
                 orderBy: sort,
                 where: {
                   $and: filters,
-                  // $or: [
-                  //   {
-                  //     name: {
-                  //       $containsi: key,
-                  //     },
-                  //   },
-                  //   {
-                  //     desc: {
-                  //       $containsi: key,
-                  //     },
-                  //   },
-                  // ],
                 },
               },
             },
@@ -81,6 +64,7 @@ module.exports = createCoreController(
               populate: {
                 thumbnail: true,
                 products: {
+                  where: { isActive: true },
                   populate: {
                     thumbnail: true,
                     product_variants: true,

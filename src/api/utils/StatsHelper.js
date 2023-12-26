@@ -60,6 +60,38 @@ const getWalletOrdersCount = async (strapi) => {
   }
 };
 
+const totalLeads = async (strapi) => {
+  try {
+    const totalLeads = await strapi.db.query("api::lead.lead").count();
+    return totalLeads;
+  } catch (err) {
+    console.log(err);
+    return err;
+  }
+};
+const getReturnOrdersCount = async (strapi) => {
+  try {
+    const returnOrdersCount = await strapi.db
+      .query("api::order-product.order-product")
+      .count({ where: { status: order_status.return_request } });
+    return returnOrdersCount;
+  } catch (err) {
+    console.log(err);
+    return err;
+  }
+};
+
+const totalOrders = async (strapi) => {
+  try {
+    const ordersCount = await strapi.db
+      .query("api::order.order")
+      .count({ where: { isPaid: true } });
+    return ordersCount;
+  } catch (err) {
+    console.log(err);
+    return err;
+  }
+};
 const getProductsCount = async (strapi) => {
   try {
     const productsCount = await strapi.db
@@ -267,4 +299,7 @@ module.exports = {
   resellerHoldProfit,
   totalUserPrepaidOrders,
   totalUserCODOrders,
+  totalOrders,
+  totalLeads,
+  getReturnOrdersCount,
 };

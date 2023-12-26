@@ -34,6 +34,9 @@ const {
   resellerHoldProfit,
   totalUserPrepaidOrders,
   totalUserCODOrders,
+  totalOrders,
+  totalLeads,
+  getReturnOrdersCount,
 } = require("../../utils/StatsHelper");
 const { domain, admin_url } = require("../../../../config/constants");
 const { faker } = require("@faker-js/faker");
@@ -46,6 +49,8 @@ const { tz_reasons, tz_types } = require("../../utils/WalletConstants");
 const { generateTransactionId } = require("../../utils/GenerateTxnId");
 const pLimit = require("p-limit");
 const limit = pLimit(1);
+const xmlbuilder = require("xmlbuilder");
+
 const { getPaymentData } = require("../services/razorpay");
 var browser = null;
 /*
@@ -97,7 +102,6 @@ module.exports = {
       return;
     }
 
-    console.log(JSON.stringify(paymentDetails));
     switch (method) {
       case "upi":
         payObject = {
@@ -120,6 +124,9 @@ module.exports = {
           contact: paymentDetails.payload.payment.entity.contact,
           notes: paymentDetails.payload.payment.entity.contact,
         };
+
+        console.log("From UPI");
+        console.log(payObject);
         break;
 
       case "card":
@@ -217,8 +224,8 @@ module.exports = {
               },
               data: { paymentId: paymentDetails.payload.payment.entity.id },
             });
-          return ctx.send("Success", 200);
         }
+        return ctx.send("Success", 200);
         break;
 
       case "payment.failed":
@@ -233,25 +240,169 @@ module.exports = {
             },
           }
         );
-
+        return ctx.send("Success", 200);
         break;
 
       case "settlement.processed":
         console.log("Settlement Processed");
-        const responseData4 = await axios.post(
-          `${process.env.RZP_WRAPPER_URL}/api/razorpay/webhooks`,
-          { data: string_pay_details, payObject },
-          {
-            headers: {
-              "x-razorpay-signature":
-                ctx.request.headers["x-razorpay-signature"],
-            },
-          }
-        );
-
+        // const responseData4 = await axios.post(
+        //   `${process.env.RZP_WRAPPER_URL}/api/razorpay/webhooks`,
+        //   { data: string_pay_details, payObject },
+        //   {
+        //     headers: {
+        //       "x-razorpay-signature":
+        //         ctx.request.headers["x-razorpay-signature"],
+        //     },
+        //   }
+        // );
+        return ctx.send("Success", 200);
       default:
         break;
     }
+
+    // return ctx.send("Success", 200);
+    // try {
+    //   var paymentDetails = JSON.parse(JSON.stringify(ctx.request.body));
+    //   var paymentCaptured =
+    //     paymentDetails.event === "payment.captured" ? true : false;
+    //   let event = paymentDetails.event;
+    //   let payment_method_rzp = paymentDetails.payload.payment.entity.method;
+    //   console.log("Inside WebHooks");
+    //   const secret = "razor@123";
+    //   const shasum = crypto.createHmac("sha256", secret);
+    //   shasum.update(JSON.stringify(ctx.request.body));
+    //   const digest = shasum.digest("hex");
+    //   const rzpOrder = JSON.stringify(ctx.request.body);
+
+    //   if (digest === ctx.request.headers["x-razorpay-signature"]) {
+    //     const order = await strapi.db
+    //       .query("api::order-product.order-product")
+    //       .findOne({
+    //         where: {
+    //           rzpayOrderId: paymentDetails.payload.payment.entity.order_id,
+    //         },
+    //       });
+
+    //     var entryPaymentLog;
+    //     var paymentData;
+    //     if (payment_method_rzp === payment_method.UPI) {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         vpa: paymentDetails.payload.payment.entity.vpa,
+    //         order: [order.id],
+    //       };
+    //     }
+    //     if (payment_method_rzp === payment_method.NET_BANKING) {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         bank: paymentDetails.payload.payment.entity.bank,
+    //         order: [order.id],
+    //       };
+    //     } else {
+    //       paymentData = {
+    //         rzOrderCreationId: paymentDetails.payload.payment.entity.order_id,
+    //         rzpaymentId: paymentDetails.payload.payment.entity.id,
+    //         amount: paymentDetails.payload.payment.entity.amount / 100,
+    //         email: paymentDetails.payload.payment.entity.email,
+    //         contact: paymentDetails.payload.payment.entity.contact,
+    //         currency: paymentDetails.payload.payment.entity.currency,
+    //         status: paymentDetails.payload.payment.entity.status.toUpperCase(),
+    //         method: payment_method_rzp,
+    //         cardId: paymentDetails.payload.payment.entity.card_id,
+    //         cardNumber:
+    //           "**** **** **** " +
+    //           paymentDetails.payload.payment.entity.card.last4,
+    //         cardType: paymentDetails.payload.payment.entity.card.type,
+    //         cardNetwork: paymentDetails.payload.payment.entity.card.network,
+    //         order: [order.id],
+    //       };
+    //     }
+    //     switch (event) {
+    //       case "payment.authorized":
+    //         console.log("Payment Authorized", event);
+    //         console.log(order);
+    //         paymentData.status = PaymentStatus.captured;
+    //         entryPaymentLog = await strapi.entityService.create(
+    //           "api::payment-log.payment-log",
+    //           {
+    //             data: paymentData,
+    //           }
+    //         );
+    //         break;
+    //       case "payment.captured":
+    //         console.log("Payment Captured", event);
+    //         if (order.isPaid === false) {
+    //           console.log(entryPaymentLog);
+    //           const entry = await strapi.db
+    //             .query("api::order-product.order-product")
+    //             .update({
+    //               where: {
+    //                 rzpayOrderId: rzpOrder.payload.payment.entity.order_id,
+    //               },
+    //               data: {
+    //                 isPaid: true,
+    //                 paymentID: rzpOrder.payload.payment.entity.id,
+    //                 paymentSignature:
+    //                   ctx.request.headers["x-razorpay-signature"],
+    //               },
+    //             });
+    //         }
+    //         //role based operations
+    //         //firebase otp verification
+    //         //email templating
+    //         //webhook complete testing
+    //         break;
+    //       case "payment.failed":
+    //         const entryPaymentFailed = await strapi.entityService.create(
+    //           "api::payment-log.payment-log",
+    //           {
+    //             data: paymentData,
+    //           }
+    //         );
+    //         console.log("Payment Failed", event);
+    //         break;
+    //       default:
+    //         break;
+    //     }
+    //   } else {
+    //     ctx.send(
+    //       {
+    //         message: "Request is Not Legit",
+    //       },
+    //       400
+    //     );
+    //   }
+    //   ctx.send(
+    //     {
+    //       message: "Webhooks executed Successfully",
+    //     },
+    //     200
+    //   );
+    // } catch (err) {
+    //   // else {
+    //   ctx.send(
+    //     {
+    //       message: "Request is Not Legit",
+    //     },
+    //     500
+    //   );
+    //   // }
+    //   // return err;
+    // }
   },
 
   selectedProductVariant: async (ctx, next) => {
@@ -779,11 +930,12 @@ module.exports = {
       case "MSG91":
         console.log("Using mSG91");
         try {
-          const phone = ctx.request.body.phoneNumber;
+          let phone = ctx.request.body.phoneNumber;
           const otp = ctx.request.body.otp;
 
           console.log(phone);
 
+          phone = phone.trim().split(" ").join("");
           //check if the user is available or not
           const user = await strapi
             .query("plugin::users-permissions.user")
@@ -822,7 +974,7 @@ module.exports = {
             expiresIn: "7d",
           });
 
-          if (user.phone == "8018801808") {
+          if (user.phone.slice(-10) == "8018801808") {
             return ctx.send({ jwt: token, user }, 200);
           }
           const updateUser = await strapi
@@ -889,25 +1041,28 @@ module.exports = {
     try {
       const totalUsers = await getUsersCount(strapi);
       const subscribers = await getSubscribersCount(strapi);
-      const codOrders = await getCODOrdersCount(strapi);
-      const prepaidOrders = await getPrepaidOrdersCount(strapi);
-      const walletOrders = await getWalletOrdersCount(strapi);
+      // const codOrders = await getCODOrdersCount(strapi);
+      // const prepaidOrders = await getPrepaidOrdersCount(strapi);
+      // const walletOrders = await getWalletOrdersCount(strapi);
       const products = await getProductsCount(strapi);
       const totalRevenue = await getTotalRevenue(strapi);
+      const total_orders = await totalOrders(strapi);
+      const total_leads = await totalLeads(strapi);
+      const total_return_orders = await getReturnOrdersCount(strapi);
 
-      const totalOrders =
-        parseInt(codOrders) + parseInt(prepaidOrders) + parseInt(walletOrders);
+      // const totalOrders =
+      //   parseInt(codOrders) + parseInt(prepaidOrders) + parseInt(walletOrders);
 
       return ctx.send(
         {
           totalRevenue,
           totalUsers,
-          totalOrders,
+          total_orders,
+          total_leads,
+          total_return_orders,
           products,
           subscribers,
-          codOrders,
-          prepaidOrders,
-          walletOrders,
+          shares: 0,
         },
         200
       );
@@ -1712,6 +1867,130 @@ module.exports = {
       }
 
       // const
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  generateSiteMap: async (ctx, next) => {
+    try {
+      //get all product IDs
+
+      const domain = "https://arhamwatches.com";
+      let urls = [
+        {
+          loc: domain,
+          changefreq: "weekly",
+          priority: "1.0",
+        },
+        {
+          loc: `${domain}/about_us`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/contact_us`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/ship_and_delivery`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/privacy_policy`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/terms_and_conditions`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/refund_and_cancellation`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/storelogin`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+        {
+          loc: `${domain}/register`,
+          changefreq: "weekly",
+          priority: "0.9",
+        },
+      ];
+      let productIDs = await strapi.db.query("api::product.product").findMany({
+        where: { isActive: true, category: { name: { $not: null } } },
+        select: ["id"],
+      });
+
+      productIDs = productIDs.map((id) => {
+        let obj = {
+          loc: `${domain}/product/${id.id}`,
+          changefreq: "weekly",
+          priority: "0.8",
+        };
+        return obj;
+      });
+
+      let collectionsIDs = await strapi.db
+        .query("api::collection.collection")
+        .findMany({ select: ["id"] });
+      collectionsIDs = collectionsIDs.map((id) => {
+        let obj = {
+          loc: `${domain}/collection/${id.id}`,
+          changefreq: "weekly",
+          priority: "0.8",
+        };
+        return obj;
+      });
+
+      let categioriesIDs = await strapi.db
+        .query("api::category.category")
+        .findMany({ select: ["id"] });
+      categioriesIDs = categioriesIDs.map((id) => {
+        let obj = {
+          loc: `${domain}/category/${id.id}`,
+          changefreq: "weekly",
+          priority: "0.8",
+        };
+        return obj;
+      });
+      urls.push(...productIDs, ...collectionsIDs, ...categioriesIDs);
+
+      const root = xmlbuilder.create("urlset", {
+        version: "1.0",
+        encoding: "UTF-8",
+      });
+      root.att("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9");
+      root.att("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+      root.att(
+        "xsi:schemaLocation",
+        "http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd"
+      );
+
+      // Add each URL to the sitemap XML
+      urls.forEach((url) => {
+        let url_data = root.ele("url");
+        url_data.ele("loc", url.loc);
+        url_data.ele("changefreq", url.changefreq);
+        url_data.ele("priority", url.priority);
+      });
+      // Convert XML to string
+      const xmlString = root.end({ pretty: true });
+
+      // Save the XML to a file
+      fs.writeFileSync("sitemap.xml", xmlString, "utf8");
+
+      // let productsURLs =
+      // console.log(productIDs);
+      return ctx.send(urls, 200);
     } catch (err) {
       console.log(err);
       return ctx.send(err, 400);

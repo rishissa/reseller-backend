@@ -84,11 +84,18 @@
       ],
       "default": "MSG91"
     },
-        "razorpayTestKey": {
+    "razorpayTestKey": {
       "type": "string"
     },
     "razorpayTestSecret": {
       "type": "string"
+    },
+    "return_request": {
+      "type": "boolean",
+      "default": true
+    },
+    "return_request_days": {
+      "type": "integer"
     }
   }
 }

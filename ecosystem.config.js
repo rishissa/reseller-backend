@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "arham-backend",
+      name: "sumeetonline-backend",
       script: "npm",
       // args: "run develop",
       args: "start",

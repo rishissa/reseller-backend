@@ -88,11 +88,15 @@ module.exports = (config, { strapi }) => {
               },
             ],
           });
+          break;
         default:
           break;
       }
     }
-    filters.push({ isActive: true }, { category: { name: { $not: null } } });
+    filters.push(
+      { isActive: true }
+      // { category: { name: { $not: null } } }
+    );
 
     ctx.request.filters = filters;
     ctx.request.sort = sort;

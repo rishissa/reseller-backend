@@ -689,6 +689,46 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       }
 
       switch (payment_gateway) {
+        // case payment_gateways.razorpay:
+        //   //generate key and order
+
+        //   var key_id = globalVar.razorpayKey;
+        //   var key_secret = globalVar.razorpaySecret;
+        //   var razorpayInfo = await razorpayService.createOrder(
+        //     key_id,
+        //     key_secret,
+        //     totalAmount
+        //   );
+
+        //   if (razorpayInfo.status == "created") {
+        //     //TXN IS STARTED
+        //     //Create Order
+        //     longTime = "order_" + new Date().getTime();
+
+        //     const order_data = await strapi.entityService.create(
+        //       "api::order.order",
+        //       {
+        //         data: {
+        //           slug: generateOrderUid(),
+        //           order_products: [...orderProducts],
+        //           address: consumer.addressID,
+        //           status: order_status.new,
+        //           consumerName: consumer.conName || null,
+        //           consumerPhone: consumer.conPhone || null,
+        //           consumerEmail: consumer.conEmail || null,
+        //           isResellerOrder: consumer.isResellerOrder,
+        //           payment_mode: consumer.payment_mode,
+        //           users_permissions_user: user_id,
+        //           rzpayOrderId: razorpayInfo.id || null,
+        //           payment_gateway: payment_gateways.razorpay,
+        //         },
+        //       }
+        //     );
+
+        //     // razorpayInfo = Object.assign({ order_slug: order.slug }, razorpayInfo);
+        //     return ctx.send(razorpayInfo, 200);
+        //   }
+        //   break;
         case payment_gateways.razorpay:
           //generate key and order
           const order_body = {
@@ -717,7 +757,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               400
             );
           }
-
+          console.log(personalID.personal_id);
           let send_razorpay_request;
           try {
             send_razorpay_request = await axios.post(
@@ -730,7 +770,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               }
             );
 
-            console.log(send_razorpay_request.data);
+            // console.log(send_razorpay_request.data);
             if (send_razorpay_request.data.status === "created") {
               const order_data = await strapi.entityService.create(
                 "api::order.order",
@@ -754,7 +794,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               return ctx.send(send_razorpay_request.data, 200);
             }
           } catch (err) {
-            console.log(err);
+            console.log(err.response);
             return ctx.send(err.data, err.status);
           }
 
@@ -1624,7 +1664,6 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
             amount: payoutAmt,
           },
         });
-
       const fcmData = {
         title: "Payout Completed",
         body: `Your Payout of ₹${payoutAmt} for Order: ${order_prod.order.slug} has been processed successfully`,
@@ -1682,7 +1721,6 @@ GROUP BY op.status;`);
       return ctx.send(err, 400);
     }
   },
-
   ordersDashboardReseller: async (ctx, next) => {
     try {
       const { id } = await strapi.plugins[
@@ -1719,7 +1757,6 @@ GROUP BY op.status;
       return ctx.send(err, 400);
     }
   },
-
   getTime: async (ctx, next) => {
     try {
       console.log("Send next get Orders Status");
@@ -2205,6 +2242,247 @@ GROUP BY op.status;
           return ctx.send({ message: `Payment Failed due to some issue` }, 500);
         }
       }
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  returnRequestOrder: async (ctx, next) => {
+    try {
+      const order_id = ctx.request.params.id;
+      const { id, isAdmin = false } = await strapi.plugins[
+        "users-permissions"
+      ].services.jwt.getToken(ctx);
+      //check if order is available
+      const order = await strapi.db
+        .query("api::order-product.order-product")
+        .findOne({ where: { id: order_id } });
+
+      if (!order) {
+        return ctx.send({ message: "No Order Found with the given ID" }, 204);
+      }
+
+      const global = await strapi.db.query("api::global.global").findOne();
+
+      if (global.return_request === false) {
+        return ctx.send(
+          {
+            message:
+              "Return Request is not available right now. Please contact the Admin",
+          },
+          400
+        );
+      }
+      //check if order is delivered
+      //check if order doent exceeds the return days
+
+      if (order.status === order_status.delivered) {
+        let now = new Date();
+        let deliveredDate = new Date(order.updatedAt);
+
+        let return_request_date = new Date(
+          new Date(order.updatedAt).setDate(
+            new Date(order.updatedAt).getDate() + global.return_request_days
+          )
+        );
+
+        if (deliveredDate < return_request_date) {
+          const createReturnOrder = await strapi.db
+            .query("api::return-order.return-order")
+            .create({
+              data: {
+                order_product: order.id,
+                note: ctx.request.body.note || null,
+                media: ctx.request.body.media || null,
+                user: id,
+              },
+            });
+          //change status to return request
+          const update_order_product = await strapi.db
+            .query("api::order-product.order-product")
+            .update({
+              where: { id: order_id },
+              data: { status: order_status.return_request },
+            });
+
+          if (update_order_product) {
+            return ctx.send(
+              {
+                message: `Return Request for OrderID: ${order_id} sent to Admin`,
+              },
+              200
+            );
+          }
+          // order_product["return_request"] = true;
+        } else {
+          return ctx.send({
+            message: `Return Request validity of ${global.return_request_days} days has been expired`,
+          });
+        }
+      } else {
+        return ctx.send(
+          { message: "Order must be Delivered in order to Return" },
+          400
+        );
+      }
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  acceptReturnRequests: async (ctx, next) => {
+    try {
+      const order_id = ctx.request.params.id;
+
+      //check if order is available
+      const order = await strapi.db
+        .query("api::order-product.order-product")
+        .findOne({
+          where: { id: order_id },
+          populate: {
+            order: {
+              select: ["id", "slug"],
+              populate: {
+                order_products: {
+                  populate: {
+                    product_variant: {
+                      populate: { product: { populate: { thumbnail: true } } },
+                    },
+                  },
+                },
+                users_permissions_user: { select: ["id", "fcmToken"] },
+              },
+            },
+          },
+        });
+
+      console.log(
+        order.order.order_products[0].product_variant.product.thumbnail.id
+      );
+      if (!order) {
+        return ctx.send({ message: "No Order Found with the given ID" }, 204);
+      }
+
+      //check status === return_request
+      if (order.status === order_status.return_request) {
+        //accept return request
+        const update_order = await strapi.db
+          .query("api::order-product.order-product")
+          .update({
+            where: { id: order_id },
+            data: { status: order_status.return_accepted },
+          });
+
+        //send fcmNotifications
+        const fcmData = {
+          title: "Order Return Accepted",
+          body: `Your Return Request for Order has been accepted`,
+          image:
+            order.order.order_products[0].product_variant.product.thumbnail.id,
+          description: `Your Return Request for Order ${order.order.slug} has been accepted`,
+          type: notify_type.order,
+          data: `${order.id}`,
+          users_permissions_user: order.order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: order.order.users_permissions_user.fcmToken,
+        };
+        //create notification entry
+        const notification = await strapi.db
+          .query("api::notification.notification")
+          .create({ data: fcmData });
+        const sendNotification = await fcmNotify(
+          fcmData,
+          order.order.users_permissions_user.fcmToken,
+          notification.id
+        );
+        return ctx.send({ message: `Return Order Accepted Successfully` }, 200);
+      }
+      return ctx.send(
+        {
+          message:
+            "Order must be requested for return in order to be Accepted by Admin",
+        },
+        400
+      );
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  rejectReturnRequests: async (ctx, next) => {
+    try {
+      const order_id = ctx.request.params.id;
+
+      //check if order is available
+      const order = await strapi.db
+        .query("api::order-product.order-product")
+        .findOne({
+          where: { id: order_id },
+          populate: {
+            order: {
+              select: ["id", "slug"],
+              populate: {
+                order_products: {
+                  populate: {
+                    product_variant: {
+                      populate: { product: { populate: { thumbnail: true } } },
+                    },
+                  },
+                },
+                users_permissions_user: { select: ["id", "fcmToken"] },
+              },
+            },
+          },
+        });
+
+      if (!order) {
+        return ctx.send({ message: "No Order Found with the given ID" }, 204);
+      }
+
+      //check status === return_request
+      if (order.status === order_status.return_request) {
+        //accept return request
+        const update_order = await strapi.db
+          .query("api::order-product.order-product")
+          .update({
+            where: { id: order_id },
+            data: { status: order_status.return_declined },
+          });
+
+        //send fcmNotifications
+        const fcmData = {
+          title: "Order Return Declined",
+          body: `Your Return Request for Order has been declined`,
+          image:
+            order.order.order_products[0].product_variant.product.thumbnail.id,
+          description: `Your Return Request for Order ${order.order.slug} has been declined`,
+          type: notify_type.order,
+          data: `${order.id}`,
+          users_permissions_user: order.order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: order.order.users_permissions_user.fcmToken,
+        };
+        //create notification entry
+        const notification = await strapi.db
+          .query("api::notification.notification")
+          .create({ data: fcmData });
+        const sendNotification = await fcmNotify(
+          fcmData,
+          order.order.users_permissions_user.fcmToken,
+          notification.id
+        );
+        return ctx.send({ message: `Return Order Accepted Successfully` }, 200);
+      }
+      return ctx.send(
+        {
+          message:
+            "Order must be requested for return in order to be Rejected by Admin",
+        },
+        400
+      );
     } catch (err) {
       console.log(err);
       return ctx.send(err, 400);

@@ -20,22 +20,34 @@ module.exports = createCoreController("api::lead.lead", ({ strapi }) => ({
       // ctx.request.body.data.status = ctx.request.status;
       ctx.request.body.data.status = lead_status.new;
       const response = await super.create(ctx);
-      const { id, isAdmin = false } = await strapi.plugins[
+      const user = await strapi.plugins[
         "users-permissions"
       ].services.jwt.getToken(ctx);
+      console.log(ctx.request.body);
 
-      const user = await strapi
-        .query("plugin::users-permissions.user")
-        .findOne({
-          where: { id: id },
-          populate: { role: true },
-        });
+      console.log(user);
+      let user_details;
+      let activity_data = { event: activity_status.new_lead };
+      if (user) {
+        user_details = await strapi
+          .query("plugin::users-permissions.user")
+          .findOne({
+            where: { id: user.id },
+            populate: { role: true },
+          });
+
+        activity_data["user"] = user_details.id;
+        activity_data[
+          "description"
+        ] = `New Lead Added By User: ${user_details.name} ID:${user_details.id} Role: ${user_details.role.name}`;
+      } else {
+        activity_data["user"] = null;
+        activity_data["description"] = `New Lead Added By User: ${
+          ctx.request.body.data.name || null
+        } ID:${ctx.request.body.data.name || null} Role: Public`;
+      }
+
       //create activity
-      let activity_data = {
-        event: activity_status.new_lead,
-        user: id,
-        description: `New Lead Added By User: ${user.name} ID:${user.id} Role: ${user.role.name}`,
-      };
 
       const activity = createActivity(activity_data, strapi);
       return ctx.send(response.data, 200);

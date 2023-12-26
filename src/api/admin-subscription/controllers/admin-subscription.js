@@ -73,8 +73,6 @@ module.exports = createCoreController(
           console.log(err);
           return ctx.send(err, 400);
         }
-
-        // console.log(send_razorpay_request.status);
         if (send_razorpay_request.status === 200) {
           console.log(body);
           const create_subscription = await strapi.db
@@ -100,6 +98,8 @@ module.exports = createCoreController(
       try {
         var { razorpay_payment_id, razorpay_order_id, razorpay_signature } =
           ctx.request.body;
+        console.log(ctx.request.body);
+
         let verify_callback;
 
         try {
@@ -126,7 +126,7 @@ module.exports = createCoreController(
           return ctx.send(verify_callback.data, 200);
         } catch (err) {
           console.log(err.response);
-          return ctx.send(err.response, 400);
+          return ctx.send("Error", 400);
         }
       } catch (err) {
         console.log(err);

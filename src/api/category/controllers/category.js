@@ -1,4 +1,4 @@
-"use strict";
+  "use strict";
 
 const { getPagination } = require("../../utils/Pagination");
 
@@ -41,6 +41,7 @@ module.exports = createCoreController(
                   where: { isActive: true },
                   populate: { thumbnail: true, product_variants: true },
                 },
+                sub_categories: { populate: { thumbnail: true } },
                 thumbnail: true,
               },
             });
