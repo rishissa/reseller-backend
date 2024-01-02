@@ -68,7 +68,8 @@
       "type": "text"
     },
     "quantity": {
-      "type": "integer"
+      "type": "integer",
+      "min": 1
     }
   }
 }
