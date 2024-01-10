@@ -17,10 +17,6 @@
       "required": true,
       "unique": true
     },
-    "slug": {
-      "type": "uid",
-      "required": false
-    },
     "products": {
       "type": "relation",
       "relation": "oneToMany",

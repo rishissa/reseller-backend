@@ -223,6 +223,11 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
     try {
       const id = ctx.params.id;
 
+      const user = await strapi.plugins[
+        "users-permissions"
+      ].services.jwt.getToken(ctx);
+
+      const global = await strapi.db.query("api::global.global").findOne();
       const product = await strapi.entityService.findOne(
         "api::product.product",
         id,
@@ -292,6 +297,27 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
         //   random = Object.assign(random, { ...prod.attributes });
         //   randProdArr.push(random);
         // }
+
+        // get last enquiry of the product with that user
+        let last_enquiry = null;
+        if (user) {
+          //get enquiry
+          const enquiries = await strapi.db.query("api::lead.lead").findMany({
+            where: {
+              $and: [{ product: { id: id } }, { user: { id: user.id } }],
+            },
+          });
+
+          if (enquiries.length > 0) {
+            last_enquiry = enquiries.reduce((acc, curr) => {
+              return curr.id > acc.id ? curr : acc;
+            });
+            product["enquiry_utc"] = last_enquiry.createdAt;
+            product["enquiry_timegap"] = global.enquiry_timegap;
+          }
+          product["enquiry_utc"] = last_enquiry;
+          product["enquiry_timegap"] = global.enquiry_timegap || null;
+        }
         return ctx.send({ product, randomProducts: list }, 200);
       } else {
         return ctx.send({ product }, 200);

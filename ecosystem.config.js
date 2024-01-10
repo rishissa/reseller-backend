@@ -3,8 +3,8 @@ module.exports = {
     {
       name: "sumeetonline-backend",
       script: "npm",
-      // args: "run develop",
-      args: "start",
+      args: "run develop",
+      // args: "start",
     },
   ],
 };
