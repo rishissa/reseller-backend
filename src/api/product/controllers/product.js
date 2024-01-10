@@ -314,9 +314,10 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
             });
             product["enquiry_utc"] = last_enquiry.createdAt;
             product["enquiry_timegap"] = global.enquiry_timegap;
+          } else {
+            product["enquiry_utc"] = last_enquiry;
+            product["enquiry_timegap"] = global.enquiry_timegap || null;
           }
-          product["enquiry_utc"] = last_enquiry;
-          product["enquiry_timegap"] = global.enquiry_timegap || null;
         }
         return ctx.send({ product, randomProducts: list }, 200);
       } else {
