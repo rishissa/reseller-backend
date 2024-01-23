@@ -12,6 +12,7 @@ const {
   createActivity,
   generateOrderUid,
   shippingPriceCalculation,
+  generateCODPrice,
 } = require("../../utils/Helpers");
 
 const {
@@ -225,24 +226,75 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
       let productVariantPrice;
 
+      // for (const [i, orderPro] of arrayOfProds.entries()) {
+      //   let prod = await strapi.db
+      //     .query("api::order-product.order-product")
+      //     .create({
+      //       data: {
+      //         quantity: parseInt(products[i].quantity),
+      //         order_price: Object.values(variantPrice)[i],
+      //         product_variant: orderPro.id,
+      //         sellingPrice: consumer.isResellerOrder
+      //           ? products[i].sellingPrice
+      //           : null,
+      //         status: order_status.new,
+      //         note: products[i].note || null,
+      //         // sellingPrice: isResellerOrder == true ? sellingPrice : null,
+      //       },
+      //     });
+      //   totalResellerMargin += consumer.isResellerOrder
+      //     ? products[i].sellingPrice
+      //     : 0;
+      //   //calculate shipping price
+      //   //if shippingPrice_type === price, then simply add the price
+      //   //if percentage, then add the percentage price from the productVariant price and sum up the totalAmount
+      //   // if (globalVar.shippingPrice_type === "PRICE") {
+      //   //   console.log("Inside PRICE");
+      //   //   totalAmount += orderPro.product.shipping_price
+      //   //     ? orderPro.product.shipping_price
+      //   //     : 0;
+      //   // } else {
+      //   //   let shipping_price_per = globalVar.shippingPrice;
+      //   //   let shipping_price = shippingPriceCalculation(
+      //   //     Object.values(variantPrice)[i],
+      //   //     shipping_price_per
+      //   //   );
+
+      //   //   totalAmount += shipping_price;
+      //   // }
+      //   if (orderPro.product.shipping === shipping_options.shipping_price) {
+      //     totalAmount += orderPro.product.shipping_price || 0;
+      //   } else if (
+      //     orderPro.product.shipping === shipping_options.shipping_percentage
+      //   ) {
+      //     let shipping_price = shippingPriceCalculation(
+      //       Object.values(variantPrice)[i],
+      //       orderPro.product.shipping_price || 0
+      //     );
+      //     totalAmount += shipping_price;
+      //   } else {
+      //     totalAmount += 0;
+      //   }
+      //   orderProducts.push(prod);
+      // }
       for (const [i, orderPro] of arrayOfProds.entries()) {
         let prod = await strapi.db
           .query("api::order-product.order-product")
           .create({
             data: {
-              quantity: parseInt(products[i].quantity),
-              order_price: Object.values(variantPrice)[i],
+              quantity: orderPro.quantity,
+              order_price: variantPrice[orderPro.id],
               product_variant: orderPro.id,
               sellingPrice: consumer.isResellerOrder
-                ? products[i].sellingPrice
+                ? products[orderPro.id].sellingPrice
                 : null,
               status: order_status.new,
-              note: products[i].note || null,
+              // note: products[orderPro.id].note || null,
               // sellingPrice: isResellerOrder == true ? sellingPrice : null,
             },
           });
         totalResellerMargin += consumer.isResellerOrder
-          ? products[i].sellingPrice
+          ? products[orderPro.id].sellingPrice
           : 0;
         //calculate shipping price
         //if shippingPrice_type === price, then simply add the price
@@ -289,7 +341,17 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           //if yes, use that
           //else use global shippingPrice
           totalAmount = 0;
-          totalAmount += parseFloat(globalVar.codPrepaidAmount);
+          const sum = Object.values(variantPrice).reduce(
+            (acc, value) => acc + value,
+            0
+          );
+
+          totalAmount =
+            globalVar.codPrepaidAmountType === "PRICE"
+              ? globalVar.codPrepaidAmount
+              : generateCODPrice(sum, globalVar.codPrepaidAmount);
+
+          // totalAmount += parseFloat(globalVar.codPrepaidAmount);
           // totalAmount = commission(totalAmount);
         }
 
@@ -297,7 +359,17 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           if (plan.name === "Free") {
             if (plan.codAllowed === true) {
               totalAmount = 0;
-              totalAmount += parseFloat(globalVar.codPrepaidAmount);
+              const sum = Object.values(variantPrice).reduce(
+                (acc, value) => acc + value,
+                0
+              );
+
+              totalAmount =
+                globalVar.codPrepaidAmountType === "PRICE"
+                  ? globalVar.codPrepaidAmount
+                  : generateCODPrice(sum, globalVar.codPrepaidAmount);
+
+              // totalAmount += parseFloat(globalVar.codPrepaidAmount);
               // totalAmount = commission(totalAmount);
             } else {
               return ctx.send(
@@ -308,7 +380,17 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           } else {
             if (plan.codAllowed === true) {
               totalAmount = 0;
-              totalAmount += parseFloat(globalVar.codPrepaidAmount);
+              const sum = Object.values(variantPrice).reduce(
+                (acc, value) => acc + value,
+                0
+              );
+
+              totalAmount =
+                globalVar.codPrepaidAmountType === "PRICE"
+                  ? globalVar.codPrepaidAmount
+                  : generateCODPrice(sum, globalVar.codPrepaidAmount);
+
+              // totalAmount += parseFloat(globalVar.codPrepaidAmount);
               // totalAmount = commission(totalAmount);
               // if (plan.price === null || plan.price === 0) {
               // } else {

@@ -236,12 +236,10 @@ module.exports = (plugin) => {
 
         let global_key = {
           admin_server_fee:
-            admin_sub.data.data.attributes.client_server_subscription_price ||
-            0,
+            admin_sub.data.data.client_server_subscription_price || 0,
         };
         myCache.set("key", global_key);
-        admin_sub_fee =
-          admin_sub.data.data.attributes.client_server_subscription_price;
+        admin_sub_fee = admin_sub.data.data.client_server_subscription_price;
       } else {
         admin_sub_fee = myCache.get("key").admin_server_fee;
       }

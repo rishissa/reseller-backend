@@ -4,7 +4,8 @@
   "info": {
     "singularName": "return-order",
     "pluralName": "return-orders",
-    "displayName": "Return Order"
+    "displayName": "Return Order",
+    "description": ""
   },
   "options": {
     "draftAndPublish": false
@@ -20,17 +21,27 @@
       "type": "string"
     },
     "media": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
       "allowedTypes": [
         "images",
         "videos"
-      ],
-      "type": "media",
-      "multiple": true
+      ]
     },
     "user": {
       "type": "relation",
       "relation": "oneToOne",
       "target": "plugin::users-permissions.user"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "SUBMITTED",
+        "APPROVED",
+        "DECLINED",
+        "RETURNED"
+      ]
     }
   }
 }

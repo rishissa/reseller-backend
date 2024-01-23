@@ -36,5 +36,14 @@ module.exports = {
         middlewares: [], //query validator
       },
     },
+    {
+      method: "GET",
+      path: "/user/leads",
+      handler: "lead.userLeads",
+      config: {
+        policies: [],
+        middlewares: [], //query validator
+      },
+    },
   ],
 };

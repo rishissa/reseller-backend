@@ -29,7 +29,6 @@ module.exports = createCoreController(
         response.data.attributes[
           "terms_conditions_url"
         ] = `https://${response.data.attributes.domain}/terms_and_conditions`;
-
         return ctx.send(response, 200);
       } catch (err) {
         console.log(err);

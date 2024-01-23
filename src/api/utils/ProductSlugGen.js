@@ -6,7 +6,6 @@ function generateRandomSlug(productName) {
 
   const sanitizedProductName = removeSpecialChars(productName);
   const words = sanitizedProductName.split(" ");
-
   // Initialize the prefix with the first letters of the words
   let prefix = "";
   for (let i = 0; i < 3; i++) {

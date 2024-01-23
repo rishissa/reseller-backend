@@ -5,6 +5,12 @@ const addCommission = (amount) => {
   return totalAmount;
 };
 
+const generateCODPrice = (amount, per) => {
+  const percentage = per;
+  const totalAmount = amount + (amount * percentage) / 100;
+  return parseFloat((totalAmount - amount).toFixed(2));
+};
+
 const createActivity = async (data, strapi) => {
   console.log(data);
   const body = {
@@ -44,6 +50,7 @@ const generateOTP = () => {
 
 module.exports = {
   commission: addCommission,
+  generateCODPrice,
   createActivity,
   generateOrderUid: uid,
   generateOTP,

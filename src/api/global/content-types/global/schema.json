@@ -96,6 +96,14 @@
     },
     "return_request_days": {
       "type": "integer"
+    },
+        "codPrepaidAmountType": {
+      "type": "enumeration",
+      "enum": [
+        "PRICE",
+        "PERCENTAGE"
+      ],
+      "default": "PERCENTAGE"
     }
   }
 }
