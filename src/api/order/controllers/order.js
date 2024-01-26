@@ -182,183 +182,391 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
     var user_id;
     var userAdmin;
 
-    try {
-      let arrayOfProds = ctx.request.arrayOfProds;
-      var orderProducts = [];
-      let totalResellerMargin = 0;
+    return await strapi.db.transaction(async (transaction) => {
+      try {
+        let arrayOfProds = ctx.request.arrayOfProds;
+        var orderProducts = [];
+        let totalResellerMargin = 0;
 
-      var payment_gateway = ctx.request.payment_gateway;
-      //finding all the products
-      //from the body
-      if (
-        ctx.request &&
-        ctx.request.header &&
-        ctx.request.header.authorization
-      ) {
-        const { id, isAdmin = false } = await strapi.plugins[
-          "users-permissions"
-        ].services.jwt.getToken(ctx);
-
-        userInfo = await strapi
-          .query("plugin::users-permissions.user")
-          .findOne({
-            where: {
-              id: id,
-            },
-          });
-        if (userInfo.isAdmin) {
-          user_id = ctx.request.body.user_id;
-          userAdmin = await strapi
-            .query("plugin::users-permissions.user")
-            .findOne({ where: { id: user_id } });
-        } else {
-          user_id = userInfo.id;
-        }
-      }
-      let { totalAmount, variantPrice } = await bulkPriceVariants(
-        plan,
-        userInfo,
-        arrayOfProds,
-        consumer
-      );
-
-      var globalVar = ctx.request.global_var;
-
-      let productVariantPrice;
-
-      for (const [i, orderPro] of arrayOfProds.entries()) {
-        let prod = await strapi.db
-          .query("api::order-product.order-product")
-          .create({
-            data: {
-              quantity: parseInt(products[i].quantity),
-              order_price: Object.values(variantPrice)[i],
-              product_variant: orderPro.id,
-              sellingPrice: consumer.isResellerOrder
-                ? products[i].sellingPrice
-                : null,
-              status: order_status.new,
-              note: products[i].note || null,
-              // sellingPrice: isResellerOrder == true ? sellingPrice : null,
-            },
-          });
-        totalResellerMargin += consumer.isResellerOrder
-          ? products[i].sellingPrice
-          : 0;
-        //calculate shipping price
-        //if shippingPrice_type === price, then simply add the price
-        //if percentage, then add the percentage price from the productVariant price and sum up the totalAmount
-        // if (globalVar.shippingPrice_type === "PRICE") {
-        //   console.log("Inside PRICE");
-        //   totalAmount += orderPro.product.shipping_price
-        //     ? orderPro.product.shipping_price
-        //     : 0;
-        // } else {
-        //   let shipping_price_per = globalVar.shippingPrice;
-        //   let shipping_price = shippingPriceCalculation(
-        //     Object.values(variantPrice)[i],
-        //     shipping_price_per
-        //   );
-
-        //   totalAmount += shipping_price;
-        // }
-        if (orderPro.product.shipping === shipping_options.shipping_price) {
-          totalAmount += orderPro.product.shipping_price || 0;
-        } else if (
-          orderPro.product.shipping === shipping_options.shipping_percentage
+        var payment_gateway = ctx.request.payment_gateway;
+        //finding all the products
+        //from the body
+        if (
+          ctx.request &&
+          ctx.request.header &&
+          ctx.request.header.authorization
         ) {
-          let shipping_price = shippingPriceCalculation(
-            Object.values(variantPrice)[i],
-            orderPro.product.shipping_price || 0
-          );
-          totalAmount += shipping_price;
-        } else {
-          totalAmount += 0;
-        }
-        orderProducts.push(prod);
-      }
-      // console.log(totalAmount);
-      totalAmount = parseFloat(totalAmount.toFixed(2));
-      // if (
-      //   globalVar.codPrepaidAmount == 0 ||
-      //   globalVar.codPrepaidAmount === null
-      // )
+          const { id, isAdmin = false } = await strapi.plugins[
+            "users-permissions"
+          ].services.jwt.getToken(ctx);
 
-      if (payment_mode === "COD") {
-        if (plan === null) {
-          //check if product has any shipping Price
-          //if yes, use that
-          //else use global shippingPrice
-          totalAmount = 0;
-          const sum = Object.values(variantPrice).reduce(
-            (acc, value) => acc + value,
-            0
-          );
-
-          totalAmount =
-            globalVar.codPrepaidAmountType === "PRICE"
-              ? globalVar.codPrepaidAmount
-              : generateCODPrice(sum, globalVar.codPrepaidAmount);
-
-          // totalAmount += parseFloat(globalVar.codPrepaidAmount);
-          // totalAmount = commission(totalAmount);
-        }
-
-        if (plan) {
-          if (plan.name === "Free") {
-            if (plan.codAllowed === true) {
-              totalAmount = 0;
-              const sum = Object.values(variantPrice).reduce(
-                (acc, value) => acc + value,
-                0
-              );
-
-              totalAmount =
-                globalVar.codPrepaidAmountType === "PRICE"
-                  ? globalVar.codPrepaidAmount
-                  : generateCODPrice(sum, globalVar.codPrepaidAmount);
-
-              // totalAmount += parseFloat(globalVar.codPrepaidAmount);
-              // totalAmount = commission(totalAmount);
-            } else {
-              return ctx.send(
-                { message: `COD is not allowed in ${plan.name} plan` },
-                400
-              );
-            }
+          userInfo = await strapi
+            .query("plugin::users-permissions.user")
+            .findOne({
+              where: {
+                id: id,
+              },
+            });
+          if (userInfo.isAdmin) {
+            user_id = ctx.request.body.user_id;
+            userAdmin = await strapi
+              .query("plugin::users-permissions.user")
+              .findOne({ where: { id: user_id } });
           } else {
-            if (plan.codAllowed === true) {
-              totalAmount = 0;
-              const sum = Object.values(variantPrice).reduce(
-                (acc, value) => acc + value,
-                0
+            user_id = userInfo.id;
+          }
+        }
+        let { totalAmount, variantPrice } = await bulkPriceVariants(
+          plan,
+          userInfo,
+          arrayOfProds,
+          consumer
+        );
+
+        var globalVar = ctx.request.global_var;
+
+        let productVariantPrice;
+
+        for (const [i, orderPro] of arrayOfProds.entries()) {
+          let prod = await strapi.db
+            .query("api::order-product.order-product")
+            .create({
+              data: {
+                quantity: orderPro.quantity,
+                order_price: variantPrice[orderPro.id],
+                product_variant: orderPro.id,
+                sellingPrice: consumer.isResellerOrder
+                  ? products[variantPrice[orderPro.id]].sellingPrice
+                  : null,
+                status: order_status.new,
+                // note: products[orderPro.id].note || null,
+                // sellingPrice: isResellerOrder == true ? sellingPrice : null,
+              },
+            });
+          totalResellerMargin += consumer.isResellerOrder
+            ? products[variantPrice[orderPro.id]].sellingPrice
+            : 0;
+          //calculate shipping price
+          //if shippingPrice_type === price, then simply add the price
+          //if percentage, then add the percentage price from the productVariant price and sum up the totalAmount
+          // if (globalVar.shippingPrice_type === "PRICE") {
+          //   console.log("Inside PRICE");
+          //   totalAmount += orderPro.product.shipping_price
+          //     ? orderPro.product.shipping_price
+          //     : 0;
+          // } else {
+          //   let shipping_price_per = globalVar.shippingPrice;
+          //   let shipping_price = shippingPriceCalculation(
+          //     Object.values(variantPrice)[i],
+          //     shipping_price_per
+          //   );
+
+          //   totalAmount += shipping_price;
+          // }
+          if (orderPro.product.shipping === shipping_options.shipping_price) {
+            totalAmount += orderPro.product.shipping_price || 0;
+          } else if (
+            orderPro.product.shipping === shipping_options.shipping_percentage
+          ) {
+            let shipping_price = shippingPriceCalculation(
+              Object.values(variantPrice)[i],
+              orderPro.product.shipping_price || 0
+            );
+            totalAmount += shipping_price;
+          } else {
+            totalAmount += 0;
+          }
+          orderProducts.push(prod);
+        }
+        // console.log(totalAmount);
+        totalAmount = parseFloat(totalAmount.toFixed(2));
+        // if (
+        //   globalVar.codPrepaidAmount == 0 ||
+        //   globalVar.codPrepaidAmount === null
+        // )
+
+        if (payment_mode === "COD") {
+          if (plan === null) {
+            //check if product has any shipping Price
+            //if yes, use that
+            //else use global shippingPrice
+            totalAmount = 0;
+            const sum = Object.values(variantPrice).reduce(
+              (acc, value) => acc + value,
+              0
+            );
+
+            totalAmount =
+              globalVar.codPrepaidAmountType === "PRICE"
+                ? globalVar.codPrepaidAmount
+                : generateCODPrice(sum, globalVar.codPrepaidAmount);
+
+            // totalAmount += parseFloat(globalVar.codPrepaidAmount);
+            // totalAmount = commission(totalAmount);
+          }
+
+          if (plan) {
+            if (plan.name === "Free") {
+              if (plan.codAllowed === true) {
+                totalAmount = 0;
+                const sum = Object.values(variantPrice).reduce(
+                  (acc, value) => acc + value,
+                  0
+                );
+
+                totalAmount =
+                  globalVar.codPrepaidAmountType === "PRICE"
+                    ? globalVar.codPrepaidAmount
+                    : generateCODPrice(sum, globalVar.codPrepaidAmount);
+
+                // totalAmount += parseFloat(globalVar.codPrepaidAmount);
+                // totalAmount = commission(totalAmount);
+              } else {
+                return ctx.send(
+                  { message: `COD is not allowed in ${plan.name} plan` },
+                  400
+                );
+              }
+            } else {
+              if (plan.codAllowed === true) {
+                totalAmount = 0;
+                const sum = Object.values(variantPrice).reduce(
+                  (acc, value) => acc + value,
+                  0
+                );
+
+                totalAmount =
+                  globalVar.codPrepaidAmountType === "PRICE"
+                    ? globalVar.codPrepaidAmount
+                    : generateCODPrice(sum, globalVar.codPrepaidAmount);
+              } else {
+                return ctx.send(
+                  { message: `COD is not allowed in ${plan.name} plan` },
+                  400
+                );
+              }
+            }
+          }
+
+          if (totalAmount == 0) {
+            order = await strapi.query("api::order.order").create(
+              {
+                data: {
+                  slug: generateOrderUid(),
+                  order_products: [...orderProducts],
+                  address: consumer.addressID,
+                  status: order_status.new,
+                  consumerName: consumer.conName || null,
+                  consumerPhone: consumer.conPhone || null,
+                  consumerEmail: consumer.conEmail || null,
+                  isResellerOrder: consumer.isResellerOrder,
+                  payment_mode: consumer.payment_mode,
+                  users_permissions_user: user_id,
+                  // seller: "",
+                },
+              },
+              { transaction: transaction }
+            );
+
+            let order_data = await strapi.db.query("api::order.order").findOne({
+              where: { id: order.id },
+              populate: {
+                order_products: {
+                  populate: {
+                    product_variant: {
+                      populate: {
+                        product: {
+                          populate: {
+                            thumbnail: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            });
+            // totalAmount += parseFloat(globalVar.shippingPrice);
+
+            //update order
+            const entry_update = await strapi.query("api::order.order").update(
+              {
+                where: { id: order.id },
+                data: {
+                  isPaid: true,
+                },
+              },
+              { transaction: transaction }
+            );
+
+            let metricProductData = {
+              // id: userInfo.id,
+              field: "ordered_count",
+              products_variants: arrayOfProds,
+            };
+            const prod_metrics = await productMetrics(
+              strapi,
+              metricProductData,
+              transaction
+            );
+            //create activity
+            let metricProductData2 = {
+              // id: userInfo.id,
+              field: "revenue_generated",
+              ordered_products: orderProducts,
+            };
+            const prod_metrics_revenue = await productMetrics(
+              strapi,
+              metricProductData2,
+              transaction
+            );
+            let metricProductData3 = {
+              // id: userInfo.id,
+              field: "premium_plan_orders",
+              products_variants: order_data.order_products,
+            };
+            const prod_metrics_revenue2 = await productMetrics(
+              strapi,
+              metricProductData3,
+              transaction
+            );
+            let activity_data = {
+              event: activity_status.order_placed,
+              user: userInfo.id,
+              description: `Order #${order.slug} Placed for the User: ${userInfo.name} ID: ${userInfo.id} -- Amount: ${totalAmount} -- Mode: MONEY`,
+            };
+
+            const activity = createActivity(activity_data, strapi, transaction);
+            const fcmData = {
+              title: "Order Placed",
+              body: `Your Order has been placed successfully`,
+              image:
+                order_data.order_products[0].product_variant.product.thumbnail
+                  .id,
+              description: `Your Order for ${order.id} has been placed successfully`,
+              type: notify_type.order,
+              data: `${order.id}`,
+              users_permissions_user: user_id,
+              targetType: "token",
+              targetValue: userInfo.fcmToken,
+            };
+            //create notification entry
+            const notification = await strapi.db
+              .query("api::notification.notification")
+              .create({ data: fcmData }, { transaction: transaction });
+            const sendNotification = await fcmNotify(
+              fcmData,
+              userInfo.fcmToken,
+              notification.id
+            );
+            //entry on txn table
+            const txn_id = await generateTransactionId();
+            const txnTable = await strapi.db
+              .query("api::transaction.transaction")
+              .create(
+                {
+                  data: {
+                    purpose: txn_purpose.purchase,
+                    user: userInfo.id,
+                    txn_type: tz_types.credit,
+                    txn_id: txn_id,
+                    remark: order.id,
+                    mode: "MONEY",
+                    amount: totalAmount,
+                  },
+                },
+                { transaction: transaction }
               );
 
-              totalAmount =
-                globalVar.codPrepaidAmountType === "PRICE"
-                  ? globalVar.codPrepaidAmount
-                  : generateCODPrice(sum, globalVar.codPrepaidAmount);
+            for (const [i, prod] of products.entries()) {
+              const entryOrderProducts = await strapi.db
+                .query("api::order-product.order-product")
+                .update(
+                  {
+                    where: { id: orderProducts[i].id },
+                    data: {
+                      status: order_status.new,
+                    },
+                  },
+                  { transaction: transaction }
+                );
+              const updateVariantQuantity = await strapi.db
+                .query("api::product-variant.product-variant")
+                .update({
+                  data: {
+                    quantity:
+                      parseInt(arrayOfProds[i].org_qty) -
+                      parseInt(products[i].quantity),
+                  },
+                  where: {
+                    id: products[i].product_variant_id,
+                  },
+                });
+            }
+            const response_obj = {
+              id: "",
+              entity: "order",
+              amount: 0,
+              amount_paid: 0,
+              amount_due: 0,
+              currency: "INR",
+              receipt: null,
+              offer_id: null,
+              status: "created",
+              attempts: 0,
+              notes: [],
+              created_at: 1668842252,
+            };
+            await transaction.commit();
+            return ctx.send(response_obj, 200);
+          }
+        }
 
-              // totalAmount += parseFloat(globalVar.codPrepaidAmount);
+        console.log(totalAmount);
+        if (payment_mode === "PREPAID") {
+          if (plan === null) {
+            // totalAmount += parseFloat(globalVar.shippingPrice || 0);
+            // totalAmount = commission(totalAmount);
+          }
+          if (plan) {
+            if (plan.prepaidAllowed === true) {
+              // totalAmount += parseFloat(globalVar.shippingPrice);
               // totalAmount = commission(totalAmount);
-              // if (plan.price === null || plan.price === 0) {
-              // } else {
-              //   console.log("inside plan and price");
-              //   totalAmount =
-              //     parseFloat(plan.price) + parseFloat(globalVar.shippingPrice);
-              //   totalAmount = commission(totalAmount);
-              //   console.log(totalAmount);
-              // }
             } else {
               return ctx.send(
-                { message: `COD is not allowed in ${plan.name} plan` },
+                { message: `Prepaid is not allowed in ${plan.name} plan` },
                 400
               );
             }
           }
         }
+        //RazorPay TXN
+        if (payment_mode === "WALLET") {
+          // console.log(totalAmount);
+          // console.log(userInfo.wallet_balance);
+          if (userInfo.isAdmin) {
+            if (
+              parseFloat(userAdmin.wallet_balance) < parseFloat(totalAmount)
+            ) {
+              return ctx.send(
+                {
+                  message: `Your Wallet doesn't have enough coins to proceed with this transaction. [Wallet Balance: ${userAdmin.wallet_balance}]`,
+                },
+                400
+              );
+            }
+          } else {
+            if (parseFloat(userInfo.wallet_balance) < parseFloat(totalAmount)) {
+              return ctx.send(
+                {
+                  message: `Your Wallet doesn't have enough coins to proceed with this transaction. [Wallet Balance: ${userInfo.wallet_balance}]`,
+                },
+                400
+              );
+            }
+          }
+          longTime = "order_" + new Date().getTime();
 
-        if (totalAmount == 0) {
           order = await strapi.entityService.create("api::order.order", {
             data: {
               slug: generateOrderUid(),
@@ -404,6 +612,32 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               },
             });
 
+          const wallet = await strapi.db.query("api::wallet.wallet").create({
+            data: {
+              transaction_type: tz_types.credit,
+              amount: totalAmount,
+              reasons: tz_reasons.purchase,
+              users_permissions_user: userInfo.id,
+              order: order.id,
+            },
+          });
+          const wallet_pay = await strapi.db
+            .query("plugin::users-permissions.user")
+            .update({
+              data: {
+                wallet_balance: userInfo.wallet_balance - totalAmount,
+              },
+              where: { id: userInfo.id },
+            });
+
+          //create metric data
+          let metricData = {
+            id: userInfo.id,
+            field: "wallet_orders",
+          };
+          //
+          const user_metrics = await userMetrics(strapi, metricData);
+
           let metricProductData = {
             // id: userInfo.id,
             field: "ordered_count",
@@ -432,7 +666,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
           let activity_data = {
             event: activity_status.order_placed,
             user: userInfo.id,
-            description: `Order #${order.slug} Placed for the User: ${userInfo.name} ID: ${userInfo.id} -- Amount: ${totalAmount} -- Mode: MONEY`,
+            description: `Order #${order.slug} Placed for the User: ${userInfo.name} ID: ${userInfo.id} -- Amount: ${totalAmount} -- Mode: Wallet`,
           };
 
           const activity = createActivity(activity_data, strapi);
@@ -468,7 +702,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
                 txn_type: tz_types.credit,
                 txn_id: txn_id,
                 remark: order.id,
-                mode: "MONEY",
+                mode: "WALLET",
                 amount: totalAmount,
               },
             });
@@ -495,455 +729,98 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
                 },
               });
           }
-          const response_obj = {
-            id: "",
-            entity: "order",
-            amount: 0,
-            amount_paid: 0,
-            amount_due: 0,
-            currency: "INR",
-            receipt: null,
-            offer_id: null,
-            status: "created",
-            attempts: 0,
-            notes: [],
-            created_at: 1668842252,
-          };
-          return ctx.send(response_obj, 200);
+          return ctx.send({ status: true, message: "Payment Done" }, 200);
         }
-      }
 
-      console.log(totalAmount);
-      if (payment_mode === "PREPAID") {
-        if (plan === null) {
-          // totalAmount += parseFloat(globalVar.shippingPrice || 0);
-          // totalAmount = commission(totalAmount);
-        }
-        if (plan) {
-          if (plan.prepaidAllowed === true) {
-            // totalAmount += parseFloat(globalVar.shippingPrice);
-            // totalAmount = commission(totalAmount);
-          } else {
-            return ctx.send(
-              { message: `Prepaid is not allowed in ${plan.name} plan` },
-              400
-            );
-          }
-        }
-      }
-      //RazorPay TXN
-      if (payment_mode === "WALLET") {
-        // console.log(totalAmount);
-        // console.log(userInfo.wallet_balance);
-        if (userInfo.isAdmin) {
-          if (parseFloat(userAdmin.wallet_balance) < parseFloat(totalAmount)) {
-            return ctx.send(
-              {
-                message: `Your Wallet doesn't have enough coins to proceed with this transaction. [Wallet Balance: ${userAdmin.wallet_balance}]`,
-              },
-              400
-            );
-          }
-        } else {
-          if (parseFloat(userInfo.wallet_balance) < parseFloat(totalAmount)) {
-            return ctx.send(
-              {
-                message: `Your Wallet doesn't have enough coins to proceed with this transaction. [Wallet Balance: ${userInfo.wallet_balance}]`,
-              },
-              400
-            );
-          }
-        }
-        longTime = "order_" + new Date().getTime();
-
-        order = await strapi.entityService.create("api::order.order", {
-          data: {
-            slug: generateOrderUid(),
-            order_products: [...orderProducts],
-            address: consumer.addressID,
-            status: order_status.new,
-            consumerName: consumer.conName || null,
-            consumerPhone: consumer.conPhone || null,
-            consumerEmail: consumer.conEmail || null,
-            isResellerOrder: consumer.isResellerOrder,
-            payment_mode: consumer.payment_mode,
-            users_permissions_user: user_id,
-          },
-        });
-
-        let order_data = await strapi.db.query("api::order.order").findOne({
-          where: { id: order.id },
-          populate: {
-            order_products: {
-              populate: {
-                product_variant: {
-                  populate: {
-                    product: {
-                      populate: {
-                        thumbnail: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        });
-        // totalAmount += parseFloat(globalVar.shippingPrice);
-
-        //update order
-        const entry_update = await strapi.db.query("api::order.order").update({
-          where: { id: order.id },
-          data: {
-            isPaid: true,
-          },
-        });
-
-        const wallet = await strapi.db.query("api::wallet.wallet").create({
-          data: {
-            transaction_type: tz_types.credit,
-            amount: totalAmount,
-            reasons: tz_reasons.purchase,
-            users_permissions_user: userInfo.id,
-            order: order.id,
-          },
-        });
-        const wallet_pay = await strapi.db
-          .query("plugin::users-permissions.user")
-          .update({
-            data: {
-              wallet_balance: userInfo.wallet_balance - totalAmount,
-            },
-            where: { id: userInfo.id },
-          });
-
-        //create metric data
-        let metricData = {
-          id: userInfo.id,
-          field: "wallet_orders",
-        };
-        //
-        const user_metrics = await userMetrics(strapi, metricData);
-
-        let metricProductData = {
-          // id: userInfo.id,
-          field: "ordered_count",
-          products_variants: arrayOfProds,
-        };
-        const prod_metrics = await productMetrics(strapi, metricProductData);
-        //create activity
-        let metricProductData2 = {
-          // id: userInfo.id,
-          field: "revenue_generated",
-          ordered_products: orderProducts,
-        };
-        const prod_metrics_revenue = await productMetrics(
-          strapi,
-          metricProductData2
-        );
-        let metricProductData3 = {
-          // id: userInfo.id,
-          field: "premium_plan_orders",
-          products_variants: order_data.order_products,
-        };
-        const prod_metrics_revenue2 = await productMetrics(
-          strapi,
-          metricProductData3
-        );
-        let activity_data = {
-          event: activity_status.order_placed,
-          user: userInfo.id,
-          description: `Order #${order.slug} Placed for the User: ${userInfo.name} ID: ${userInfo.id} -- Amount: ${totalAmount} -- Mode: Wallet`,
-        };
-
-        const activity = createActivity(activity_data, strapi);
-        const fcmData = {
-          title: "Order Placed",
-          body: `Your Order has been placed successfully`,
-          image:
-            order_data.order_products[0].product_variant.product.thumbnail.id,
-          description: `Your Order for ${order.id} has been placed successfully`,
-          type: notify_type.order,
-          data: `${order.id}`,
-          users_permissions_user: user_id,
-          targetType: "token",
-          targetValue: userInfo.fcmToken,
-        };
-        //create notification entry
-        const notification = await strapi.db
-          .query("api::notification.notification")
-          .create({ data: fcmData });
-        const sendNotification = await fcmNotify(
-          fcmData,
-          userInfo.fcmToken,
-          notification.id
-        );
-        //entry on txn table
-        const txn_id = await generateTransactionId();
-        const txnTable = await strapi.db
-          .query("api::transaction.transaction")
-          .create({
-            data: {
-              purpose: txn_purpose.purchase,
-              user: userInfo.id,
-              txn_type: tz_types.credit,
-              txn_id: txn_id,
-              remark: order.id,
-              mode: "WALLET",
-              amount: totalAmount,
-            },
-          });
-
-        for (const [i, prod] of products.entries()) {
-          const entryOrderProducts = await strapi.db
-            .query("api::order-product.order-product")
-            .update({
-              where: { id: orderProducts[i].id },
-              data: {
-                status: order_status.new,
-              },
-            });
-          const updateVariantQuantity = await strapi.db
-            .query("api::product-variant.product-variant")
-            .update({
-              data: {
-                quantity:
-                  parseInt(arrayOfProds[i].org_qty) -
-                  parseInt(products[i].quantity),
-              },
-              where: {
-                id: products[i].product_variant_id,
-              },
-            });
-        }
-        return ctx.send({ status: true, message: "Payment Done" }, 200);
-      }
-
-      switch (payment_gateway) {
-        // case payment_gateways.razorpay:
-        //   //generate key and order
-
-        //   var key_id = globalVar.razorpayKey;
-        //   var key_secret = globalVar.razorpaySecret;
-        //   var razorpayInfo = await razorpayService.createOrder(
-        //     key_id,
-        //     key_secret,
-        //     totalAmount
-        //   );
-
-        //   if (razorpayInfo.status == "created") {
-        //     //TXN IS STARTED
-        //     //Create Order
-        //     longTime = "order_" + new Date().getTime();
-
-        //     const order_data = await strapi.entityService.create(
-        //       "api::order.order",
-        //       {
-        //         data: {
-        //           slug: generateOrderUid(),
-        //           order_products: [...orderProducts],
-        //           address: consumer.addressID,
-        //           status: order_status.new,
-        //           consumerName: consumer.conName || null,
-        //           consumerPhone: consumer.conPhone || null,
-        //           consumerEmail: consumer.conEmail || null,
-        //           isResellerOrder: consumer.isResellerOrder,
-        //           payment_mode: consumer.payment_mode,
-        //           users_permissions_user: user_id,
-        //           rzpayOrderId: razorpayInfo.id || null,
-        //           payment_gateway: payment_gateways.razorpay,
-        //         },
-        //       }
-        //     );
-
-        //     // razorpayInfo = Object.assign({ order_slug: order.slug }, razorpayInfo);
-        //     return ctx.send(razorpayInfo, 200);
-        //   }
-        //   break;
-        case payment_gateways.razorpay:
-          //generate key and order
-          const order_body = {
-            totalAmount: totalAmount,
-            payment_mode,
-            payout_required:
-              consumer.isResellerOrder === true &&
-              consumer.payment_mode === payment_methods.cod
-                ? true
-                : false,
-            totalResellerMargin: Math.abs(totalResellerMargin - totalAmount),
-            razorpay_env: process.env.ENVIRONMENT,
-            // order_id:
-          };
-
-          const personalID = await strapi
-            .query("plugin::users-permissions.user")
-            .findOne({
-              where: { role: { name: "Admin" } },
-              select: ["personal_id"],
-            });
-          // const personalID = ctx.request.headers["x-verify"];
-          if (!personalID.personal_id) {
-            return ctx.send(
-              { message: "No VerifyID passed in the header" },
-              400
-            );
-          }
-          console.log(personalID.personal_id);
-          let send_razorpay_request;
-          try {
-            send_razorpay_request = await axios.post(
-              `${process.env.RZP_WRAPPER_URL}/orders/razorpay`,
-              order_body,
-              {
-                headers: {
-                  "X-VERIFY": personalID.personal_id,
-                },
-              }
-            );
-
-            // console.log(send_razorpay_request.data);
-            if (send_razorpay_request.data.status === "created") {
-              const order_data = await strapi.entityService.create(
-                "api::order.order",
-                {
-                  data: {
-                    slug: generateOrderUid(),
-                    order_products: [...orderProducts],
-                    address: consumer.addressID,
-                    status: order_status.new,
-                    consumerName: consumer.conName || null,
-                    consumerPhone: consumer.conPhone || null,
-                    consumerEmail: consumer.conEmail || null,
-                    isResellerOrder: consumer.isResellerOrder,
-                    payment_mode: consumer.payment_mode,
-                    users_permissions_user: user_id,
-                    rzpayOrderId: send_razorpay_request.data.id,
-                    payment_gateway: payment_gateways.razorpay,
-                  },
-                }
+        switch (payment_gateway) {
+          case payment_gateways.razorpay:
+            //check if the user has razorpay or not
+            //use there own razorpay
+            //check if credentials exist
+            let key_id =
+              process.env.ENVIRONMENT === "DEV"
+                ? globalVar.razorpayTestKey
+                : globalVar.razorpayKey;
+            let key_secret =
+              process.env.ENVIRONMENT === "DEV"
+                ? globalVar.razorpayTestSecret
+                : globalVar.razorpaySecret;
+            if (key_id && key_secret) {
+              var razorpayInfo = await razorpayService.createOrder(
+                key_id,
+                key_secret,
+                totalAmount
               );
-              return ctx.send(send_razorpay_request.data, 200);
+              if (razorpayInfo.status == "created") {
+                //TXN IS STARTED
+                //Create Order
+
+                const order_data = await strapi.entityService.create(
+                  "api::order.order",
+                  {
+                    data: {
+                      slug: generateOrderUid(),
+                      order_products: [...orderProducts],
+                      address: consumer.addressID,
+                      status: order_status.new,
+                      consumerName: consumer.conName || null,
+                      consumerPhone: consumer.conPhone || null,
+                      consumerEmail: consumer.conEmail || null,
+                      isResellerOrder: consumer.isResellerOrder,
+                      payment_mode: consumer.payment_mode,
+                      users_permissions_user: user_id,
+                      rzpayOrderId: razorpayInfo.id || null,
+                      payment_gateway: payment_gateways.razorpay,
+                    },
+                  }
+                );
+
+                const create_log = await strapi.db
+                  .query("api::payment-log.payment-log")
+                  .create({
+                    data: {
+                      rzOrderCreationId: razorpayInfo.id,
+                      amount: razorpayInfo.amount / 100,
+                      order: order_data.id,
+                    },
+                  });
+                return ctx.send(razorpayInfo, 200);
+              }
+              //     // razorpayInfo = Object.assign({ order_slug: order.slug }, razorpayInfo);
+              return ctx.send(
+                {
+                  message: `Unable to create instance`,
+                },
+                500
+              );
+            } else {
+              return ctx.send(
+                {
+                  message: `No Razorpay Credentials provided. Kindly Re-Check the credentials`,
+                },
+                400
+              );
             }
-          } catch (err) {
-            console.log(err.response);
-            return ctx.send(err.data, err.status);
-          }
 
-          break;
+          case payment_gateways.cashfree:
+            console.log("iNSIDE CASHFREE SWITCH CASE");
+            let cashfree_id = globalVar.cashfree_client_id;
+            let cashfree_secret = globalVar.cashfree_client_secret;
+            //generate order
+            const customer = {
+              email: ctx.request.body.consumer.conEmail,
+              phone: ctx.request.body.consumer.conPhone,
+            };
 
-        case payment_gateways.cashfree:
-          console.log("iNSIDE CASHFREE SWITCH CASE");
-          let cashfree_id = globalVar.cashfree_client_id;
-          let cashfree_secret = globalVar.cashfree_client_secret;
-          //generate order
-          const customer = {
-            email: ctx.request.body.consumer.conEmail,
-            phone: ctx.request.body.consumer.conPhone,
-          };
+            const cashfreeInfo = await cashfreeService(
+              customer,
+              cashfree_id,
+              cashfree_secret,
+              totalAmount
+            );
 
-          const cashfreeInfo = await cashfreeService(
-            customer,
-            cashfree_id,
-            cashfree_secret,
-            totalAmount
-          );
-
-          console.log("cashfreeInfo");
-          console.log(cashfreeInfo);
-          const order_data = await strapi.entityService.create(
-            "api::order.order",
-            {
-              data: {
-                slug: generateOrderUid(),
-                order_products: [...orderProducts],
-                address: consumer.addressID,
-                status: order_status.new,
-                consumerName: consumer.conName || null,
-                consumerPhone: consumer.conPhone || null,
-                consumerEmail: consumer.conEmail || null,
-                isResellerOrder: consumer.isResellerOrder,
-                payment_mode: consumer.payment_mode,
-                users_permissions_user: user_id,
-                rzpayOrderId: cashfreeInfo.order_id,
-              },
-            }
-          );
-          const cashfree_obj = {
-            id: cashfreeInfo.order_id,
-            session_id: cashfreeInfo.payment_session_id,
-            amount: cashfreeInfo.order_amount,
-          };
-          return ctx.send(cashfree_obj, 200);
-          break;
-
-        case payment_gateways.phonepe:
-          console.log("Inside PhonePE Gateway");
-          const merchantKey = globalVar.phonepe_merchant_key;
-          const payment_instrument_type =
-            ctx.request.body.payment_instrument_type;
-          const payment_instrument_target =
-            ctx.request.body.payment_instrument_target;
-
-          // const merchantKey = "de745dfb-1545-43cf-8285-0086f2a4636f";
-
-          totalAmount = parseFloat(totalAmount.toFixed(2)) * 100;
-          console.log(totalAmount);
-          const data = {
-            // merchantId: "VEGANONLINE",
-            merchantId: globalVar.phonepe_merchant_id,
-            merchantTransactionId: `MT${new Date().getTime()}`, //auto-generate
-            merchantUserId: `MUIDADMIN`, //auto-generate
-            amount: totalAmount,
-            redirectUrl: "https://example.com",
-            redirectMode: "REDIRECT",
-            callbackUrl: "https://api.hangs.in/api/orders/phonepe/callback",
-            mobileNumber: userInfo.phone
-              ? userInfo.phone.slice(-10)
-              : "6295612299",
-            paymentInstrument: {
-              type: payment_instrument_type,
-              targetApp: payment_instrument_target,
-            },
-            deviceContext: {
-              deviceOS: "ANDROID",
-            },
-
-            // paymentInstrument: {
-            //   type: "PAY_PAGE",
-            // },
-          };
-
-          // Convert the Payload to JSON and encode as Base64
-          const payloadMain = Buffer.from(JSON.stringify(data)).toString(
-            "base64"
-          );
-
-          const payload = `${payloadMain}/pg/v1/pay${merchantKey}`;
-          const checksum =
-            crypto.createHash("sha256").update(payload, "utf8").digest("hex") +
-            `###${globalVar.phonepe_key_index}`;
-
-          // console.log(checksum);
-
-          const axiosConfig = {
-            method: "POST",
-            // url: "https://api.phonepe.com/apis/hermes/pg/v1/pay",
-            // url: "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",
-            url: "https://mercury-uat.phonepe.com/pg/v1/pay",
-            headers: {
-              "Content-Type": "application/json",
-              "X-VERIFY": checksum,
-              accept: "application/json",
-            },
-            data: {
-              request: payloadMain,
-            },
-          };
-
-          console.log(checksum);
-          try {
-            const responseData = await axios(axiosConfig);
-            //create order
+            console.log("cashfreeInfo");
+            console.log(cashfreeInfo);
             const order_data = await strapi.entityService.create(
               "api::order.order",
               {
@@ -958,17 +835,38 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
                   isResellerOrder: consumer.isResellerOrder,
                   payment_mode: consumer.payment_mode,
                   users_permissions_user: user_id,
-                  rzpayOrderId: responseData.data.data.merchantTransactionId,
-                  payment_gateway: payment_gateways.phonepe,
+                  rzpayOrderId: cashfreeInfo.order_id,
                 },
               }
             );
+            const cashfree_obj = {
+              id: cashfreeInfo.order_id,
+              session_id: cashfreeInfo.payment_session_id,
+              amount: cashfreeInfo.order_amount,
+            };
+            return ctx.send(cashfree_obj, 200);
+            break;
 
-            let responseDataJSON = {
+          case payment_gateways.phonepe:
+            console.log("Inside PhonePE Gateway");
+            const merchantKey = globalVar.phonepe_merchant_key;
+            const payment_instrument_type =
+              ctx.request.body.payment_instrument_type;
+            const payment_instrument_target =
+              ctx.request.body.payment_instrument_target;
+
+            // const merchantKey = "de745dfb-1545-43cf-8285-0086f2a4636f";
+
+            totalAmount = parseFloat(totalAmount.toFixed(2)) * 100;
+            console.log(totalAmount);
+            const data = {
+              // merchantId: "VEGANONLINE",
               merchantId: globalVar.phonepe_merchant_id,
               merchantTransactionId: `MT${new Date().getTime()}`, //auto-generate
               merchantUserId: `MUIDADMIN`, //auto-generate
               amount: totalAmount,
+              redirectUrl: "https://example.com",
+              redirectMode: "REDIRECT",
               callbackUrl: "https://api.hangs.in/api/orders/phonepe/callback",
               mobileNumber: userInfo.phone
                 ? userInfo.phone.slice(-10)
@@ -980,47 +878,196 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
               deviceContext: {
                 deviceOS: "ANDROID",
               },
+
+              // paymentInstrument: {
+              //   type: "PAY_PAGE",
+              // },
             };
 
-            let bufferResponse = Buffer.from(
-              JSON.stringify(responseDataJSON)
-            ).toString("base64");
-            const checksumResponse =
+            // Convert the Payload to JSON and encode as Base64
+            const payloadMain = Buffer.from(JSON.stringify(data)).toString(
+              "base64"
+            );
+
+            const payload = `${payloadMain}/pg/v1/pay${merchantKey}`;
+            const checksum =
               crypto
                 .createHash("sha256")
-                .update(
-                  bufferResponse + "/pg/v1/pay" + globalVar.phonepe_merchant_id,
-                  "utf8"
-                )
+                .update(payload, "utf8")
                 .digest("hex") + `###${globalVar.phonepe_key_index}`;
-            return ctx.send(
-              {
-                base64: bufferResponse,
-                checksum: checksumResponse,
-                apiEndPoint: "/pg/v1/pay",
-              },
-              200
-            );
-          } catch (error) {
-            console.log(error);
-            return ctx.send(error, 500);
-          }
-        default:
-          break;
-      }
 
-      return ctx.send(
-        {
-          message: "Unable to Process Order",
-        },
-        400
-      );
-      // console.log(fcm)
-      // return (ctx.response.status = 200);
-    } catch (err) {
-      console.log(err);
-      return ctx.send(err, 400);
-    }
+            // console.log(checksum);
+
+            const axiosConfig = {
+              method: "POST",
+              // url: "https://api.phonepe.com/apis/hermes/pg/v1/pay",
+              // url: "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",
+              url: "https://mercury-uat.phonepe.com/pg/v1/pay",
+              headers: {
+                "Content-Type": "application/json",
+                "X-VERIFY": checksum,
+                accept: "application/json",
+              },
+              data: {
+                request: payloadMain,
+              },
+            };
+
+            console.log(checksum);
+            try {
+              const responseData = await axios(axiosConfig);
+              //create order
+              const order_data = await strapi.entityService.create(
+                "api::order.order",
+                {
+                  data: {
+                    slug: generateOrderUid(),
+                    order_products: [...orderProducts],
+                    address: consumer.addressID,
+                    status: order_status.new,
+                    consumerName: consumer.conName || null,
+                    consumerPhone: consumer.conPhone || null,
+                    consumerEmail: consumer.conEmail || null,
+                    isResellerOrder: consumer.isResellerOrder,
+                    payment_mode: consumer.payment_mode,
+                    users_permissions_user: user_id,
+                    rzpayOrderId: responseData.data.data.merchantTransactionId,
+                    payment_gateway: payment_gateways.phonepe,
+                  },
+                }
+              );
+
+              let responseDataJSON = {
+                merchantId: globalVar.phonepe_merchant_id,
+                merchantTransactionId: `MT${new Date().getTime()}`, //auto-generate
+                merchantUserId: `MUIDADMIN`, //auto-generate
+                amount: totalAmount,
+                callbackUrl: "https://api.hangs.in/api/orders/phonepe/callback",
+                mobileNumber: userInfo.phone
+                  ? userInfo.phone.slice(-10)
+                  : "6295612299",
+                paymentInstrument: {
+                  type: payment_instrument_type,
+                  targetApp: payment_instrument_target,
+                },
+                deviceContext: {
+                  deviceOS: "ANDROID",
+                },
+              };
+
+              let bufferResponse = Buffer.from(
+                JSON.stringify(responseDataJSON)
+              ).toString("base64");
+              const checksumResponse =
+                crypto
+                  .createHash("sha256")
+                  .update(
+                    bufferResponse +
+                      "/pg/v1/pay" +
+                      globalVar.phonepe_merchant_id,
+                    "utf8"
+                  )
+                  .digest("hex") + `###${globalVar.phonepe_key_index}`;
+              return ctx.send(
+                {
+                  base64: bufferResponse,
+                  checksum: checksumResponse,
+                  apiEndPoint: "/pg/v1/pay",
+                },
+                200
+              );
+            } catch (error) {
+              console.log(error);
+              return ctx.send(error, 500);
+            }
+
+          case payment_gateways.none:
+            //proceed with SPAY
+            //generate key and order
+            const order_body = {
+              totalAmount: totalAmount,
+              payment_mode,
+              payout_required:
+                consumer.isResellerOrder === true &&
+                consumer.payment_mode === payment_methods.cod
+                  ? true
+                  : false,
+              totalResellerMargin: Math.abs(totalResellerMargin - totalAmount),
+              razorpay_env: process.env.ENVIRONMENT,
+              // order_id:
+            };
+
+            const personalID = await strapi
+              .query("plugin::users-permissions.user")
+              .findOne({
+                where: { role: { name: "Admin" } },
+                select: ["personal_id"],
+              });
+            // const personalID = ctx.request.headers["x-verify"];
+            if (!personalID.personal_id) {
+              return ctx.send(
+                { message: "No VerifyID passed in the header" },
+                400
+              );
+            }
+            console.log(personalID.personal_id);
+            let send_razorpay_request;
+            try {
+              send_razorpay_request = await axios.post(
+                `${process.env.RZP_WRAPPER_URL}/orders/razorpay`,
+                order_body,
+                {
+                  headers: {
+                    "X-VERIFY": personalID.personal_id,
+                  },
+                }
+              );
+
+              // console.log(send_razorpay_request.data);
+              if (send_razorpay_request.data.status === "created") {
+                const order_data = await strapi.entityService.create(
+                  "api::order.order",
+                  {
+                    data: {
+                      slug: generateOrderUid(),
+                      order_products: [...orderProducts],
+                      address: consumer.addressID,
+                      status: order_status.new,
+                      consumerName: consumer.conName || null,
+                      consumerPhone: consumer.conPhone || null,
+                      consumerEmail: consumer.conEmail || null,
+                      isResellerOrder: consumer.isResellerOrder,
+                      payment_mode: consumer.payment_mode,
+                      users_permissions_user: user_id,
+                      rzpayOrderId: send_razorpay_request.data.id,
+                      payment_gateway: payment_gateways.razorpay,
+                    },
+                  }
+                );
+                return ctx.send(send_razorpay_request.data, 200);
+              }
+            } catch (err) {
+              console.log(err.response);
+              return ctx.send(err.data, err.status);
+            }
+          default:
+            break;
+        }
+        await transaction.rollback();
+        return ctx.send(
+          {
+            message: "Unable to Process Order",
+          },
+          400
+        );
+        // console.log(fcm)
+        // return (ctx.response.status = 200);
+      } catch (err) {
+        await transaction.rollback();
+        console.log(err);
+        return ctx.send(err, 400);
+      }
+    });
   },
 
   verifyPaymentOrder: async (ctx, next) => {
@@ -1028,202 +1075,301 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
     var products = [];
     var productVar = [];
 
-    try {
-      var { razorpay_payment_id, razorpay_order_id, razorpay_signature } =
-        ctx.request.body;
+    return await strapi.db.transaction(async (transaction) => {
+      try {
+        var { razorpay_payment_id, razorpay_order_id, razorpay_signature } =
+          ctx.request.body;
 
-      var userInfo;
-      var order_id = ctx.request.body.order_id;
-      const { id, isAdmin = false } = await strapi.plugins[
-        "users-permissions"
-      ].services.jwt.getToken(ctx);
+        var userInfo;
+        var order_id = ctx.request.body.order_id;
+        const { id, isAdmin = false } = await strapi.plugins[
+          "users-permissions"
+        ].services.jwt.getToken(ctx);
 
-      let order = await strapi.db.query("api::order.order").findOne({
-        where: { rzpayOrderId: razorpay_order_id },
-        populate: {
-          address: true,
-          users_permissions_user: true,
-          order_products: {
-            quantity: true,
-            populate: {
-              product_variant: {
-                populate: {
-                  product: {
-                    populate: {
-                      thumbnail: true,
+        const globalVar = await strapi.db
+          .query("api::global.global")
+          // @ts-ignore
+          .findOne();
+
+        let order = await strapi.db.query("api::order.order").findOne({
+          where: { rzpayOrderId: razorpay_order_id },
+          populate: {
+            address: true,
+            users_permissions_user: true,
+            order_products: {
+              quantity: true,
+              populate: {
+                product_variant: {
+                  populate: {
+                    product: {
+                      populate: {
+                        thumbnail: true,
+                      },
                     },
                   },
                 },
               },
             },
           },
-        },
-      });
+        });
 
-      userInfo = await strapi.query("plugin::users-permissions.user").findOne({
-        where: {
-          id: order.users_permissions_user.id,
-        },
-      });
-
-      let verify_callback;
-
-      try {
-        verify_callback = await axios.post(
-          `${process.env.RZP_WRAPPER_URL}/orders/razorpay/verify`,
-          { order_id: order.id, razorpay_env: process.env.ENVIRONMENT },
-          {
-            headers: {
-              razorpay_order_id,
-              razorpay_payment_id,
-              razorpay_signature,
-            },
-          }
-        );
-      } catch (err) {
-        console.log(err.response);
-        return ctx.send(err.response, 400);
-      }
-
-      const rzOrder = verify_callback.data;
-
-      const entry = await strapi.db.query("api::order.order").update({
-        where: { id: order.id },
-        data: {
-          isPaid: true,
-          paymentID: razorpay_payment_id.toString(),
-          paymentSignature: razorpay_signature.toString(),
-        },
-      });
-
-      for (const [i, prod] of order.order_products.entries()) {
-        const entryOrderProducts = await strapi.db
-          .query("api::order-product.order-product")
-          .update({
-            where: { id: order.order_products[i].id },
-            data: {
-              status: order_status.new,
-            },
-          });
-
-        const updateVariantQuantity = await strapi.db
-          .query("api::product-variant.product-variant")
-          .update({
-            data: {
-              quantity:
-                parseInt(order.order_products[i].product_variant.quantity) -
-                parseInt(entryOrderProducts.quantity),
-            },
+        userInfo = await strapi
+          .query("plugin::users-permissions.user")
+          .findOne({
             where: {
-              id: order.order_products[i].product_variant.id,
+              id: order.users_permissions_user.id,
             },
           });
-        products.push(order.order_products[i].product_variant.name);
-        productVar.push(order.order_products[i].product_variant);
+
+        let verify_callback;
+        //check if razorpay exists
+        let rzOrder;
+        if (globalVar.selected_payment_gateway === "NONE") {
+          try {
+            verify_callback = await axios.post(
+              `${process.env.RZP_WRAPPER_URL}/orders/razorpay/verify`,
+              {
+                order_id: order.id,
+                razorpay_env: process.env.ENVIRONMENT,
+                razorpay_order_id,
+                razorpay_payment_id,
+                razorpay_signature,
+              }
+              // {
+              //   headers: {
+              //   },
+              // }
+            );
+
+            rzOrder = verify_callback.data;
+          } catch (err) {
+            console.log(err);
+            await transaction.rollback();
+            return ctx.send(err, 400);
+          }
+        } else {
+          console.log("Inside Clients Razorpay Verify");
+          const environment = process.env.ENVIRONMENT;
+          const key_id =
+            environment === "DEV"
+              ? globalVar.razorpayTestKey
+              : globalVar.razorpayKey;
+          const key_secret =
+            environment === "DEV"
+              ? globalVar.razorpayTestSecret
+              : globalVar.razorpaySecret;
+          //use client's razorpay
+          var generated_signature = crypto
+            .createHmac("sha256", key_id)
+            .update(razorpay_order_id + "|" + razorpay_payment_id)
+            .digest("hex");
+          var instance = new Razorpay({
+            key_id: key_id,
+            key_secret: key_secret,
+          });
+
+          rzOrder = await instance.orders.fetch(razorpay_order_id);
+          let payment_log_data = {
+            rzpaymentId: razorpay_payment_id,
+            status: "CAPTURED",
+          };
+          const log = await strapi.db
+            .query("api::payment-log.payment-log")
+            .findOne({
+              where: {
+                rzOrderCreationId: razorpay_order_id,
+              },
+            });
+
+          console.log("Log From Verify order");
+          if (log) {
+            if (!log.method) {
+              console.log(log);
+              const update_log = await strapi
+                .query("api::payment-log.payment-log")
+                .update(
+                  {
+                    where: { rzOrderCreationId: razorpay_order_id },
+                    data: payment_log_data,
+                  },
+                  { transaction: transaction }
+                );
+            }
+          } else {
+            //create
+            const create_log = await strapi.db
+              .query("api::payment-log.payment-log")
+              .create(
+                {
+                  data: payment_log_data,
+                },
+                { transaction: transaction }
+              );
+          }
+        }
+
+        const entry = await strapi.db.query("api::order.order").update(
+          {
+            where: { id: order.id },
+            data: {
+              isPaid: true,
+              paymentID: razorpay_payment_id.toString(),
+              paymentSignature: razorpay_signature.toString(),
+            },
+          },
+          { transaction: transaction }
+        );
+
+        for (const [i, prod] of order.order_products.entries()) {
+          const entryOrderProducts = await strapi.db
+            .query("api::order-product.order-product")
+            .update(
+              {
+                where: { id: order.order_products[i].id },
+                data: {
+                  status: order_status.new,
+                },
+              },
+              { transaction: transaction }
+            );
+
+          const updateVariantQuantity = await strapi.db
+            .query("api::product-variant.product-variant")
+            .update(
+              {
+                data: {
+                  quantity:
+                    parseInt(order.order_products[i].product_variant.quantity) -
+                    parseInt(entryOrderProducts.quantity),
+                },
+                where: {
+                  id: order.order_products[i].product_variant.id,
+                },
+              },
+              { transaction: transaction }
+            );
+          products.push(order.order_products[i].product_variant.name);
+          productVar.push(order.order_products[i].product_variant);
+        }
+
+        //create metrics
+        let metricData = {
+          id: order.users_permissions_user.id,
+          field:
+            order.payment_mode === payment_methods.cod
+              ? "cod_orders"
+              : "prepaid_orders",
+        };
+
+        const user_metrics = await userMetrics(strapi, metricData, transaction);
+
+        //product metrics
+        let metricProductData = {
+          // id: userInfo.id,
+          field: "ordered_count",
+          products_variants: productVar,
+        };
+        const prod_metrics = await productMetrics(
+          strapi,
+          metricProductData,
+          transaction
+        );
+        //create activity
+        let metricProductData2 = {
+          // id: userInfo.id,
+          field: "revenue_generated",
+          ordered_products: order.order_products,
+        };
+        const prod_metrics_revenue = await productMetrics(
+          strapi,
+          metricProductData2,
+          transaction
+        );
+        let metricProductData3 = {
+          // id: userInfo.id,
+          field: "premium_plan_orders",
+          products_variants: order.order_products,
+        };
+        const prod_metrics_revenue2 = await productMetrics(
+          strapi,
+          metricProductData3,
+          transaction
+        );
+        //create entry in txn table
+        const txn_id = await generateTransactionId();
+        const txnTable = await strapi.db
+          .query("api::transaction.transaction")
+          .create(
+            {
+              data: {
+                purpose: txn_purpose.purchase,
+                user: id,
+                txn_type: tz_types.credit,
+                txn_id: txn_id,
+                remark: order.id,
+                mode: "MONEY",
+                amount: rzOrder.amount / 100,
+              },
+            },
+            { transaction: transaction }
+          );
+
+        let ordersCount =
+          userInfo.ordersCount === null
+            ? 1
+            : parseInt(userInfo.ordersCount) + 1;
+        const updateUser = await strapi
+          .query("plugin::users-permissions.user")
+          .update(
+            {
+              where: { id: order.users_permissions_user.id },
+              data: {
+                ordersCount: ordersCount,
+              },
+            },
+            { transaction: transaction }
+          );
+        //create activity
+        let activity_data = {
+          event: activity_status.order_placed,
+          user: userInfo.id,
+          description: `Order #${order.slug} Placed for the User: ${
+            userInfo.name
+          } ID: ${userInfo.id} -- Amount: ${rzOrder.amount / 100} -- Mode: ${
+            order.payment_mode
+          }`,
+        };
+
+        const activity = createActivity(activity_data, strapi, transaction);
+        console.log(products);
+        const fcmData = {
+          title: "Order Placed",
+          body: `Your Order has been placed successfully`,
+          image: order.order_products[0].product_variant.product.thumbnail.id,
+          description: `Your Order for ${products} has been placed successfully`,
+          type: notify_type.order,
+          data: `${order.id}`,
+          users_permissions_user: order.users_permissions_user.id,
+          targetType: "token",
+          targetValue: userInfo.fcmToken,
+        };
+        //create notification entry
+        const notification = await strapi.db
+          .query("api::notification.notification")
+          .create({ data: fcmData }, { transaction: transaction });
+        const sendNotification = await fcmNotify(
+          fcmData,
+          userInfo.fcmToken,
+          notification.id
+        );
+        return ctx.send({ message: "Signature Verified" }, 200);
+      } catch (err) {
+        console.log(err);
+        await transaction.rollback();
+        // console.log("i am here");
+        return ctx.send(err, 400);
       }
-
-      //create metrics
-      let metricData = {
-        id: order.users_permissions_user.id,
-        field:
-          order.payment_mode === payment_methods.cod
-            ? "cod_orders"
-            : "prepaid_orders",
-      };
-
-      const user_metrics = await userMetrics(strapi, metricData);
-
-      //product metrics
-      let metricProductData = {
-        // id: userInfo.id,
-        field: "ordered_count",
-        products_variants: productVar,
-      };
-      const prod_metrics = await productMetrics(strapi, metricProductData);
-      //create activity
-      let metricProductData2 = {
-        // id: userInfo.id,
-        field: "revenue_generated",
-        ordered_products: order.order_products,
-      };
-      const prod_metrics_revenue = await productMetrics(
-        strapi,
-        metricProductData2
-      );
-      let metricProductData3 = {
-        // id: userInfo.id,
-        field: "premium_plan_orders",
-        products_variants: order.order_products,
-      };
-      const prod_metrics_revenue2 = await productMetrics(
-        strapi,
-        metricProductData3
-      );
-      //create entry in txn table
-      const txn_id = await generateTransactionId();
-      const txnTable = await strapi.db
-        .query("api::transaction.transaction")
-        .create({
-          data: {
-            purpose: txn_purpose.purchase,
-            user: id,
-            txn_type: tz_types.credit,
-            txn_id: txn_id,
-            remark: order.id,
-            mode: "MONEY",
-            amount: rzOrder.amount / 100,
-          },
-        });
-
-      let ordersCount =
-        userInfo.ordersCount === null ? 1 : parseInt(userInfo.ordersCount) + 1;
-      const updateUser = await strapi
-        .query("plugin::users-permissions.user")
-        .update({
-          where: { id: order.users_permissions_user.id },
-          data: {
-            ordersCount: ordersCount,
-          },
-        });
-      //create activity
-      let activity_data = {
-        event: activity_status.order_placed,
-        user: userInfo.id,
-        description: `Order #${order.slug} Placed for the User: ${
-          userInfo.name
-        } ID: ${userInfo.id} -- Amount: ${rzOrder.amount / 100} -- Mode: ${
-          order.payment_mode
-        }`,
-      };
-
-      const activity = createActivity(activity_data, strapi);
-      console.log(products);
-      const fcmData = {
-        title: "Order Placed",
-        body: `Your Order has been placed successfully`,
-        image: order.order_products[0].product_variant.product.thumbnail.id,
-        description: `Your Order for ${products} has been placed successfully`,
-        type: notify_type.order,
-        data: `${order.id}`,
-        users_permissions_user: order.users_permissions_user.id,
-        targetType: "token",
-        targetValue: userInfo.fcmToken,
-      };
-      //create notification entry
-      const notification = await strapi.db
-        .query("api::notification.notification")
-        .create({ data: fcmData });
-      const sendNotification = await fcmNotify(
-        fcmData,
-        userInfo.fcmToken,
-        notification.id
-      );
-      return ctx.send({ message: "Signature Verified" }, 200);
-    } catch (err) {
-      console.log(err);
-      // console.log("i am here");
-      return ctx.send(err, 400);
-    }
+    });
   },
 
   acceptOrder: async (ctx, next) => {
@@ -1539,7 +1685,7 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
                   order: {
                     $and: [
                       { id: { $not: null } },
-                      !tag_store
+                      tag_store === "false" || !tag_store
                         ? { isPaid: true }
                         : { users_permissions_user: { id: id } },
                       { isPaid: true },

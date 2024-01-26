@@ -77,5 +77,14 @@ module.exports = {
         middlewares: ["api::product.product-filters"],
       },
     },
+    {
+      method: "GET",
+      path: "/admin/products/:id",
+      handler: "product.getSingleProductAdmin",
+      config: {
+        policies: [],
+        // middlewares: ["api::product.product-filters"],
+      },
+    },
   ],
 };

@@ -110,6 +110,7 @@ const payment_gateways = {
   razorpay: "RAZORPAY",
   cashfree: "CASHFREE",
   phonepe: "PHONEPE",
+  none: "NONE",
 };
 
 const PhonePePaymentStatuses = {

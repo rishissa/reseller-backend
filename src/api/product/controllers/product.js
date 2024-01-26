@@ -633,4 +633,30 @@ module.exports = createCoreController("api::product.product", ({ strapi }) => ({
       return ctx.send(err, 400);
     }
   },
+
+  async getSingleProductAdmin(ctx, next) {
+    try {
+      const id = ctx.params.id;
+
+      const product = await strapi.entityService.findOne(
+        "api::product.product",
+        id,
+        {
+          populate: {
+            gallery: true,
+            product_variants: { populate: { bulk_pricings: true } },
+            category: true,
+            sub_category: true,
+            collection: true,
+            thumbnail: true,
+            product_metric: true,
+          },
+        }
+      );
+      return ctx.send(product, 200);
+    } catch (err) {
+      console.log(err);
+      ctx.send(err, 400);
+    }
+  },
 }));

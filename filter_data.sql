@@ -1,1 +1,0 @@
-\COPY (SELECT * FROM public.products WHERE created_at >= '2023-09-25 00:00:00' AND created_at < '2023-09-27 00:00:00') TO './filtered_data.csv';

@@ -1,5 +1,5 @@
 module.exports = {
-  async userMetrics(strapi, data) {
+  async userMetrics(strapi, data, transaction) {
     console.log("Inside user metrics");
     const { id, field } = data;
 
@@ -14,45 +14,57 @@ module.exports = {
         if (user.metric === null) {
           const wallet_order_metrics = await strapi.db
             .query("api::user-metric.user-metric")
-            .create({
-              data: {
-                wallet_orders: 1,
-                user: user.id,
+            .create(
+              {
+                data: {
+                  wallet_orders: 1,
+                  user: user.id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
         } else {
           const wallet_order_metrics = await strapi.db
             .query("api::user-metric.user-metric")
-            .update({
-              where: { id: user.metric.id },
-              data: {
-                wallet_orders: user.metric.wallet_orders + 1,
-                user: user.id,
+            .update(
+              {
+                where: { id: user.metric.id },
+                data: {
+                  wallet_orders: user.metric.wallet_orders + 1,
+                  user: user.id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
         }
         break;
       case "cod_orders":
         if (user.metric === null) {
           const wallet_order_metrics = await strapi.db
             .query("api::user-metric.user-metric")
-            .create({
-              data: {
-                cod_orders: 1,
-                user: user.id,
+            .create(
+              {
+                data: {
+                  cod_orders: 1,
+                  user: user.id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
           console.log(wallet_order_metrics);
         } else {
           const wallet_order_metrics = await strapi.db
             .query("api::user-metric.user-metric")
-            .update({
-              where: { id: user.metric.id },
-              data: {
-                cod_orders: user.metric.cod_orders + 1,
-                user: user.id,
+            .update(
+              {
+                where: { id: user.metric.id },
+                data: {
+                  cod_orders: user.metric.cod_orders + 1,
+                  user: user.id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
           console.log(wallet_order_metrics);
         }
         break;
@@ -60,23 +72,29 @@ module.exports = {
         if (user.metric === null) {
           const wallet_order_metrics = await strapi.db
             .query("api::user-metric.user-metric")
-            .create({
-              data: {
-                prepaid_orders: 1,
-                user: user.id,
+            .create(
+              {
+                data: {
+                  prepaid_orders: 1,
+                  user: user.id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
           console.log(wallet_order_metrics);
         } else {
           const wallet_order_metrics = await strapi.db
             .query("api::user-metric.user-metric")
-            .update({
-              where: { id: user.metric.id },
-              data: {
-                prepaid_orders: user.metric.prepaid_orders + 1,
-                user: user.id,
+            .update(
+              {
+                where: { id: user.metric.id },
+                data: {
+                  prepaid_orders: user.metric.prepaid_orders + 1,
+                  user: user.id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
           console.log(wallet_order_metrics);
         }
         break;
@@ -84,23 +102,29 @@ module.exports = {
         if (user.metric === null) {
           const wallet_order_metrics = await strapi.db
             .query("api::user-metric.user-metric")
-            .create({
-              data: {
-                subscriptions_count: 1,
-                user: user.id,
+            .create(
+              {
+                data: {
+                  subscriptions_count: 1,
+                  user: user.id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
           //   console.log(wallet_order_metrics);
         } else {
           const wallet_order_metrics = await strapi.db
             .query("api::user-metric.user-metric")
-            .update({
-              where: { id: user.metric.id },
-              data: {
-                subscriptions_count: user.metric.subscriptions_count + 1,
-                user: user.id,
+            .update(
+              {
+                where: { id: user.metric.id },
+                data: {
+                  subscriptions_count: user.metric.subscriptions_count + 1,
+                  user: user.id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
           //   console.log(wallet_order_metrics);
         }
         break;

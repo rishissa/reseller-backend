@@ -1,5 +1,5 @@
 module.exports = {
-  async productMetrics(strapi, data) {
+  async productMetrics(strapi, data, transaction) {
     const { field } = data;
 
     switch (field) {
@@ -20,29 +20,33 @@ module.exports = {
             });
 
           if (!productMetric) {
-            const product_ordered_metrics = await strapi.db
+            const product_ordered_metrics = await strapi
               .query("api::product-metric.product-metric")
-              .create({
-                data: {
-                  ordered_count: 1,
-                  product: productVar.product.id,
+              .create(
+                {
+                  data: {
+                    ordered_count: 1,
+                    product: productVar.product.id,
+                  },
                 },
-              });
+                { transaction: transaction }
+              );
           } else {
             const product_ordered_metrics = await strapi.db
               .query("api::product-metric.product-metric")
-              .update({
-                where: { id: productMetric.id },
-                data: {
-                  ordered_count: productMetric.ordered_count + 1,
+              .update(
+                {
+                  where: { id: productMetric.id },
+                  data: {
+                    ordered_count: productMetric.ordered_count + 1,
+                  },
                 },
-              });
+                { transaction: transaction }
+              );
           }
         }
         break;
       case "premium_plan_orders":
-        console.log(data.products_variants);
-        console.log("data.products_variants", data.products_variants);
         for (const item of data.products_variants) {
           const productVar = await strapi.db
             .query("api::product-variant.product-variant")
@@ -60,22 +64,28 @@ module.exports = {
           if (!productMetric) {
             const product_ordered_metrics = await strapi.db
               .query("api::product-metric.product-metric")
-              .create({
-                data: {
-                  premium_plan_orders: 1,
-                  product: productVar.product.id,
+              .create(
+                {
+                  data: {
+                    premium_plan_orders: 1,
+                    product: productVar.product.id,
+                  },
                 },
-              });
+                { transaction: transaction }
+              );
             // console.log(product_ordered_metrics);
           } else {
             const product_ordered_metrics = await strapi.db
               .query("api::product-metric.product-metric")
-              .update({
-                where: { id: productMetric.id },
-                data: {
-                  premium_plan_orders: productMetric.premium_plan_orders + 1,
+              .update(
+                {
+                  where: { id: productMetric.id },
+                  data: {
+                    premium_plan_orders: productMetric.premium_plan_orders + 1,
+                  },
                 },
-              });
+                { transaction: transaction }
+              );
             // console.log(product_ordered_metrics);
           }
         }
@@ -89,22 +99,28 @@ module.exports = {
         if (!productMetric) {
           const product_view_metrics = await strapi.db
             .query("api::product-metric.product-metric")
-            .create({
-              data: {
-                view_count: 1,
-                product: data.product_id,
+            .create(
+              {
+                data: {
+                  view_count: 1,
+                  product: data.product_id,
+                },
               },
-            });
+              { transaction: transaction }
+            );
           // console.log(product_view_metrics);
         } else {
           const product_view_metrics = await strapi.db
             .query("api::product-metric.product-metric")
-            .update({
-              where: { id: productMetric.id },
-              data: {
-                view_count: productMetric.view_count + 1,
+            .update(
+              {
+                where: { id: productMetric.id },
+                data: {
+                  view_count: productMetric.view_count + 1,
+                },
               },
-            });
+              { transaction: transaction }
+            );
           // console.log(product_view_metrics);
         }
 
@@ -174,25 +190,29 @@ module.exports = {
           if (!productMetric) {
             const product_revenue_generated_metrics = await strapi.db
               .query("api::product-metric.product-metric")
-              .create({
-                data: {
-                  revenue_generated: ordered_products.order_price,
-                  product: ordered_products.product_variant.product.id,
+              .create(
+                {
+                  data: {
+                    revenue_generated: ordered_products.order_price,
+                    product: ordered_products.product_variant.product.id,
+                  },
                 },
-              });
-            console.log(product_revenue_generated_metrics);
+                { transaction: transaction }
+              );
           } else {
             const product_revenue_generated_metrics = await strapi.db
               .query("api::product-metric.product-metric")
-              .update({
-                where: { id: productMetric.id },
-                data: {
-                  revenue_generated:
-                    productMetric.revenue_generated +
-                    ordered_products.order_price,
+              .update(
+                {
+                  where: { id: productMetric.id },
+                  data: {
+                    revenue_generated:
+                      productMetric.revenue_generated +
+                      ordered_products.order_price,
+                  },
                 },
-              });
-            console.log(product_revenue_generated_metrics);
+                { transaction: transaction }
+              );
           }
         }
 
