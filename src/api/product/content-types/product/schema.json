@@ -1,0 +1,102 @@
+{
+  "kind": "collectionType",
+  "collectionName": "products",
+  "info": {
+    "singularName": "product",
+    "pluralName": "products",
+    "displayName": "Product",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "slug": {
+      "type": "uid",
+      "required": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "desc": {
+      "type": "text",
+      "required": true
+    },
+    "thumbnail": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "gallery": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category",
+      "inversedBy": "products"
+    },
+    "product_variants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::product-variant.product-variant",
+      "mappedBy": "product"
+    },
+    "sub_category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sub-category.sub-category",
+      "inversedBy": "products"
+    },
+    "yt_video_link": {
+      "type": "string"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "product_metric": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product-metric.product-metric",
+      "mappedBy": "product"
+    },
+    "shipping_price": {
+      "type": "decimal"
+    },
+    "cod_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "shipping": {
+      "type": "enumeration",
+      "enum": [
+        "SHIPPING_PRICE",
+        "SHIPPING_PERCENTAGE",
+        "FREE_SHIPPING"
+      ],
+      "required": true
+    },
+    "rating": {
+      "type": "decimal"
+    },
+    "enquiry": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_price": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

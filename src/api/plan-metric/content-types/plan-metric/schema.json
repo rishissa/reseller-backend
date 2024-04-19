@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "plan_metrics",
+  "info": {
+    "singularName": "plan-metric",
+    "pluralName": "plan-metrics",
+    "displayName": "Plan Metrics",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "plan": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::plan.plan",
+      "inversedBy": "plan_metric"
+    },
+    "subscribers_count": {
+      "type": "integer"
+    },
+    "revenue_generated": {
+      "type": "decimal"
+    }
+  }
+}

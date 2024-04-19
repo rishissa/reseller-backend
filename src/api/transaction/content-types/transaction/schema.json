@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "transactions",
+  "info": {
+    "singularName": "transaction",
+    "pluralName": "transactions",
+    "displayName": "Transaction",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "purpose": {
+      "type": "enumeration",
+      "enum": [
+        "PURCHASE",
+        "REFUND",
+        "ADDED_TO_WALLET"
+      ]
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "transactions"
+    },
+    "txn_type": {
+      "type": "enumeration",
+      "enum": [
+        "DEBIT",
+        "CREDIT"
+      ]
+    },
+    "txn_id": {
+      "type": "string"
+    },
+    "remark": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "enumeration",
+      "enum": [
+        "WALLET",
+        "MONEY"
+      ]
+    },
+    "amount": {
+      "type": "decimal",
+      "default": 0
+    }
+  }
+}

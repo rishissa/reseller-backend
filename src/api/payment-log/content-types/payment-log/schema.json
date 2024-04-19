@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payment_logs",
+  "info": {
+    "singularName": "payment-log",
+    "pluralName": "payment-logs",
+    "displayName": "Payment Log",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "rzOrderCreationId": {
+      "type": "string"
+    },
+    "rzpaymentId": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "float"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "AUTHORIZED",
+        "CAPTURED",
+        "FAILED"
+      ]
+    },
+    "currency": {
+      "type": "string",
+      "default": "INR"
+    },
+    "method": {
+      "type": "string"
+    },
+    "vpa": {
+      "type": "string"
+    },
+    "accountNumber": {
+      "type": "string"
+    },
+    "ifscCode": {
+      "type": "string"
+    },
+    "cardNetwork": {
+      "type": "string"
+    },
+    "cardId": {
+      "type": "string"
+    },
+    "cardNumber": {
+      "type": "string"
+    },
+    "cardType": {
+      "type": "string"
+    },
+    "bank": {
+      "type": "string"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "payment_log"
+    },
+    "email": {
+      "type": "string"
+    },
+    "contact": {
+      "type": "string"
+    },
+    "subscription": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::subscription.subscription",
+      "inversedBy": "payment_logs"
+    }
+  }
+}

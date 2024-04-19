@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "return_orders",
+  "info": {
+    "singularName": "return-order",
+    "pluralName": "return-orders",
+    "displayName": "Return Order",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "order_product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::order-product.order-product"
+    },
+    "note": {
+      "type": "string"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "videos"
+      ]
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "SUBMITTED",
+        "APPROVED",
+        "DECLINED",
+        "RETURNED"
+      ]
+    }
+  }
+}

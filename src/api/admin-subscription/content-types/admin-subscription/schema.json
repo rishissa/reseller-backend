@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "admin_subscriptions",
+  "info": {
+    "singularName": "admin-subscription",
+    "pluralName": "admin-subscriptions",
+    "displayName": "Admin Subscription",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "validFrom": {
+      "type": "datetime"
+    },
+    "validTo": {
+      "type": "datetime"
+    },
+    "payment_logs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment-log.payment-log",
+      "mappedBy": "admin_subscription"
+    },
+    "paymentId": {
+      "type": "string"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "admin_subscriptions"
+    }
+  }
+}

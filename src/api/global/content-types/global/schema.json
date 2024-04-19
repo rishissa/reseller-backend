@@ -1,0 +1,120 @@
+{
+  "kind": "singleType",
+  "collectionName": "globals",
+  "info": {
+    "singularName": "global",
+    "pluralName": "globals",
+    "displayName": "Global",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "subscriptionPrice": {
+      "type": "decimal"
+    },
+    "codPrepaidAmount": {
+      "type": "decimal"
+    },
+    "shippingPrice": {
+      "type": "decimal"
+    },
+    "razorpayKey": {
+      "type": "string"
+    },
+    "razorpaySecret": {
+      "type": "string"
+    },
+    "withdrawLimit": {
+      "type": "decimal",
+      "required": true
+    },
+    "razorpayXAccountNumber": {
+      "type": "string"
+    },
+    "shiprocket_username": {
+      "type": "string"
+    },
+    "shiprocket_password": {
+      "type": "string",
+      "private": true
+    },
+    "is_shiprocket_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "token": {
+      "type": "text"
+    },
+    "selected_payment_gateway": {
+      "type": "enumeration",
+      "enum": [
+        "RAZORPAY",
+        "CASHFREE",
+        "PHONEPE",
+        "NONE"
+      ],
+      "default": "RAZORPAY"
+    },
+    "cashfree_client_secret": {
+      "type": "string"
+    },
+    "cashfree_client_id": {
+      "type": "string"
+    },
+    "phonepe_merchant_id": {
+      "type": "string"
+    },
+    "phonepe_merchant_key": {
+      "type": "string"
+    },
+    "phonepe_key_index": {
+      "type": "string"
+    },
+    "firebase_auth": {
+      "type": "json"
+    },
+    "user_verification_method": {
+      "type": "enumeration",
+      "enum": [
+        "FIREBASE",
+        "MSG91",
+        "INTERAKT"
+      ],
+      "default": "MSG91"
+    },
+    "razorpayTestKey": {
+      "type": "string"
+    },
+    "razorpayTestSecret": {
+      "type": "string"
+    },
+    "return_request": {
+      "type": "boolean",
+      "default": true
+    },
+    "return_request_days": {
+      "type": "integer"
+    },
+    "codPrepaidAmountType": {
+      "type": "enumeration",
+      "enum": [
+        "PRICE",
+        "PERCENTAGE"
+      ],
+      "default": "PERCENTAGE"
+    },
+    "interakt_api_key": {
+      "type": "string"
+    },
+    "firebase_notifications": {
+      "type": "boolean",
+      "default": true
+    },
+    "interakt_notifications": {
+      "type": "boolean"
+    }
+  }
+}

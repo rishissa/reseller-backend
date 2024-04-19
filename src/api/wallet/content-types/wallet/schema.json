@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "wallets",
+  "info": {
+    "singularName": "wallet",
+    "pluralName": "wallets",
+    "displayName": "Wallet",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "amount": {
+      "type": "decimal"
+    },
+    "transaction_type": {
+      "type": "enumeration",
+      "enum": [
+        "DEBIT",
+        "CREDIT"
+      ],
+      "required": true
+    },
+    "reasons": {
+      "type": "enumeration",
+      "enum": [
+        "PURCHASE",
+        "WITHDRAWL",
+        "ADDITION",
+        "PAYOUT_SENT"
+      ]
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "wallets"
+    },
+    "remark": {
+      "type": "string"
+    },
+    "proof": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "order": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::order.order",
+      "mappedBy": "wallet"
+    }
+  }
+}

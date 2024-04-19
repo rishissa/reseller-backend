@@ -1,0 +1,50 @@
+{
+  "kind": "singleType",
+  "collectionName": "free_plans",
+  "info": {
+    "singularName": "free-plan",
+    "pluralName": "free-plans",
+    "displayName": "Free Plan",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "premiumPricing": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "codAllowed": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
+    "prepaidAllowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "productsAllowed": {
+      "type": "integer"
+    },
+    "productsListing": {
+      "type": "enumeration",
+      "enum": [
+        "LATEST",
+        "OLD",
+        "RANDOM"
+      ]
+    },
+    "codPrice": {
+      "type": "decimal"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "leads",
+  "info": {
+    "singularName": "lead",
+    "pluralName": "leads",
+    "displayName": "Lead",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": false
+    },
+    "phone": {
+      "type": "string",
+      "required": false
+    },
+    "country_code": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "NEW",
+        "ASSIGNED",
+        "CALLING",
+        "CALLED",
+        "CONVERTED",
+        "COMPLETED"
+      ]
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "WHATSAPP",
+        "INSTAGRAM",
+        "SOCIAL_SELLER_WEBSITE",
+        "YOUTUBE_CHANNEL",
+        "APP",
+        "WEBSITE"
+      ]
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "lead_raiseds"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product.product"
+    },
+    "assigned_to": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "consumer_note": {
+      "type": "text"
+    },
+    "staff_note": {
+      "type": "text"
+    },
+    "quantity": {
+      "type": "integer"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "activity_logs",
+  "info": {
+    "singularName": "activity-log",
+    "pluralName": "activity-logs",
+    "displayName": "ActivityLog",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "description": {
+      "type": "string"
+    },
+    "event": {
+      "type": "enumeration",
+      "enum": [
+        "ADMIN_LOG_IN",
+        "RESELLER_LOG_IN",
+        "ORDER_PLACED",
+        "ORDER_ACCEPTED",
+        "ORDER_DECLINED",
+        "ORDER_SHIPPED",
+        "ORDER_DELIVERED",
+        "SUBSCRIPTION_ADDED",
+        "NEW_CAMPAIGN_ADDED",
+        "NEW_PRODUCT_ADDED",
+        "NEW_COLLECTION_ADDED",
+        "NEW_TUTORIAL_ADDED",
+        "NEW_LEAD_ADDED",
+        "NEW_GROUP_ADDED",
+        "LEAD_COMPLETED",
+        "LEAD_CALLED",
+        "LEAD_CALLING",
+        "LEAD_CONVERTED",
+        "RESELLER_WITHDRAW",
+        "RESELLER_PAYOUT",
+        "WALLET_DEBIT",
+        "WALLET_CREDIT"
+      ]
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "activity_logs"
+    }
+  }
+}

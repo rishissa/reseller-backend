@@ -1,0 +1,23 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pin_codes",
+  "info": {
+    "singularName": "pin-code",
+    "pluralName": "pin-codes",
+    "displayName": "PinCode",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "pincode": {
+      "type": "string",
+      "required": true,
+      "maxLength": 6,
+      "minLength": 6,
+      "unique": true
+    }
+  }
+}

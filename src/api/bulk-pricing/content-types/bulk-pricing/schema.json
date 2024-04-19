@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "bulk_pricings",
+  "info": {
+    "singularName": "bulk-pricing",
+    "pluralName": "bulk-pricings",
+    "displayName": "Bulk Pricing"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "from": {
+      "type": "integer"
+    },
+    "to": {
+      "type": "integer"
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "premiumPrice": {
+      "type": "decimal"
+    },
+    "product_variant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product-variant.product-variant",
+      "inversedBy": "bulk_pricings"
+    }
+  }
+}

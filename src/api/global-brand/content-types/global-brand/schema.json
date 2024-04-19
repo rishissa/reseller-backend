@@ -1,0 +1,79 @@
+{
+  "kind": "singleType",
+  "collectionName": "global_brands",
+  "info": {
+    "singularName": "global-brand",
+    "pluralName": "global-brands",
+    "displayName": "Global Brand",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "logo_light_mode": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "tagline": {
+      "type": "string"
+    },
+    "whatsapp_number": {
+      "type": "string"
+    },
+    "calling_number": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "about_us": {
+      "type": "richtext"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "facebook_page_url": {
+      "type": "string"
+    },
+    "instagram_page_url": {
+      "type": "string"
+    },
+    "telegram_page_url": {
+      "type": "string"
+    },
+    "store_map_location": {
+      "type": "string"
+    },
+    "theme_color": {
+      "type": "string"
+    },
+    "logo_dark_mode": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "favicon": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    }
+  }
+}

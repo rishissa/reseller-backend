@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "campaigns",
+  "info": {
+    "singularName": "campaign",
+    "pluralName": "campaigns",
+    "displayName": "Campaign",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "notification_title": {
+      "type": "string"
+    },
+    "notification_body": {
+      "type": "string"
+    },
+    "notification_image": {
+      "type": "string"
+    },
+    "schedule_time": {
+      "type": "datetime"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "link",
+        "product",
+        "collection"
+      ]
+    },
+    "data": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    }
+  }
+}
